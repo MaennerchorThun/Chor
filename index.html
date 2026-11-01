@@ -303,13 +303,13 @@ const LOGO="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANAAAABpCAYAAABLYa3JAA
 /* ================= MCT Chor-App =================
    Für die aktiven Sänger des Männerchors Thun. Daten in Supabase (gleiche Datenbank wie die Herrenabend-App),
    Zugriff nur über geprüfte Funktionen mit dem persönlichen Code. Dateien im privaten Speicher «chor». */
-const APP_VERSION="1.4"; /* bei jeder Änderung erhöhen */
+const APP_VERSION="1.5"; /* bei jeder Änderung erhöhen */
 const SUPA={url:"https://tvygwnawrkxdhzghxgfv.supabase.co",key:"sb_publishable_yO40Pv19n6Wq0Wh769VZCg_q9BRTBvd"};
 const FILES_FN=SUPA.url+"/functions/v1/chor-files";
 const TYP={probe:{l:"Probe",ic:"🎵"},auftritt:{l:"Auftritt",ic:"🎤"},anlass:{l:"Anlass",ic:"🍷"},ausflug:{l:"Ausflug",ic:"🚌"}};
 const ART={noten:{l:"Noten",ic:"📄"},audio:{l:"Audio",ic:"🎧"},video:{l:"Video",ic:"🎬"},text:{l:"Text",ic:"📝"},sonstiges:{l:"Sonstiges",ic:"📎"}};
 const STIMMEN=["1. Tenor","2. Tenor","1. Bass","2. Bass"];
-const FUNKTIONEN=["Präsident","Vizepräsident","Kassier","Sekretär","Aktuar","Dirigentin","Vizedirigent","Materialverwalter","Beisitzer","Herrenabend-OK","2. Vizepräsident","2. Sekretär","Mitglieder","Marketing und Events","Obmann Veteranen"];
+const FUNKTIONEN=["Präsident","Vizepräsident","Kassier","Sekretär","Aktuar","Dirigentin","Vizedirigent","Materialverwalter","Beisitzer","Herrenabend-OK","2. Sekretär","Mitglieder","Marketing und Events","Obmann Veteranen"];
 const S={code:null,me:null,members:[],events:[],posts:[],files:[],board:[],congratsMe:[],congratsGiven:[],urls:{},unread:0,tFilter:"alle",tPast:false,mFilter:"alle",mQ:"",statJahr:new Date().getFullYear(),statTyp:"",busy:null};
 
 const $=s=>document.querySelector(s);
@@ -722,10 +722,10 @@ function stForm(id){const s=(stammCache&&stammCache.stamm)||{},v=isV();
 const GREMIEN={vorstand:"Vorstand",charge:"Chargen"};
 const CHARGEN=["Vizechorleiter","Herrenabendkassier","Fähnrich","Vize-Fähnrich","Archivar","Webmaster","Bibliothekar MUKO","Bibliothekar MUKO Stv.","Obmann Ernennungsausschuss","Ernennungsausschuss","Turmwart Chutziturm","Chutziturmkommission","Stimmenchef","Stimmenchef 1. Tenor","Stimmenchef 2. Tenor","Stimmenchef 1. Bass","Stimmenchef 2. Bass","Rechnungsrevisor","Rechnungsrevisor (Vorsitz)","Ersatzrevisor","Revisor Reisekasse","Chorleitung","Musikkommission","Präsident Musikkommission","Konzertkassier","Kassier Chutziturm","Präsident Chutziturm","Präsident Baukommission Chutzistube","Sekretär Veteranen","Kassier Veteranen","Leiter Veteranenchor","Personelles Veteranen","Pressechef","Werbechef","Notenchef"];
 /* Funktionsnamen vereinheitlichen (Revisor = Rechnungsrevisor = Charge) */
-function normF(f){f=String(f||"").trim();if(/^(vorsitz(ender)?\s+(rechnungs)?revisor|(rechnungs)?revisor(in)?\s*\(?vorsitz\)?)$/i.test(f))return "Rechnungsrevisor (Vorsitz)";if(/^ersatz[\s-]*(rechnungs)?revisor(in)?$/i.test(f))return "Ersatzrevisor";if(/^(rechnungs)?revisor(in|en)?(\s*\d)?$/i.test(f))return "Rechnungsrevisor";return f}
+function normF(f){f=String(f||"").trim();if(/^(vorsitz(ender)?\s+(rechnungs)?revisor|(rechnungs)?revisor(in)?\s*\(?vorsitz\)?)$/i.test(f))return "Rechnungsrevisor (Vorsitz)";if(/^ersatz[\s-]*(rechnungs)?revisor(in)?$/i.test(f))return "Ersatzrevisor";if(/^2\.?\s*vize|chef d(es|\.) gess?ellig/i.test(f))return "Marketing und Events";if(/^(rechnungs)?revisor(in|en)?(\s*\d)?$/i.test(f))return "Rechnungsrevisor";return f}
 const gremOf=(f,def)=>CHARGEN.some(c=>c.toLowerCase()===normF(f).toLowerCase())?"charge":FUNKTIONEN.some(c=>c.toLowerCase()===normF(f).toLowerCase())?"vorstand":def;
 /* Funktionen aus der Access-«Geschichte» ableiten (Jahreszeilen «2018; 41; Präsident» und Bereiche «1994 - 1996 1. Sekretär») */
-const ACC_VORSTAND=["Präsident","Vizepräsident","2. Vizepräsident","Kassier","Sekretär","2. Sekretär","Mitglieder","Marketing und Events","Obmann Veteranen","Beisitzer"];
+const ACC_VORSTAND=["Präsident","Vizepräsident","Kassier","Sekretär","2. Sekretär","Mitglieder","Marketing und Events","Obmann Veteranen","Beisitzer"];
 function accCanon(p){let t=String(p||"").toLowerCase().replace(/^[\s\-–.]+/,"").replace(/\s+/g," ").trim();if(!t)return[];
   const o=[],add=x=>{if(!o.includes(x))o.push(x)};
   if(/marketing/.test(t))return["Marketing und Events"];
@@ -741,7 +741,7 @@ function accCanon(p){let t=String(p||"").toLowerCase().replace(/^[\s\-–.]+/,""
   if(/archivar/.test(t))add("Archivar");if(/webmaster/.test(t))add("Webmaster");if(/notenchef/.test(t))add("Notenchef");
   if(/pressechef/.test(t))add("Pressechef");if(/werbechef/.test(t))add("Werbechef");
   if(o.length)return o;
-  if(/2\.?\s*vi|chef d(es|\.) gess?ell/.test(t))return["2. Vizepräsident"];
+  if(/2\.?\s*vi|chef d(es|\.) gess?ell|gess?ellig/.test(t))return["Marketing und Events"];
   if(/vi(t)?zepr|^1?\.?\s*vize|^vize/.test(t))return["Vizepräsident"];
   if(/pr[äaö]s/.test(t))return["Präsident"];
   if(/2\.\s*sekr/.test(t))return["2. Sekretär"];
