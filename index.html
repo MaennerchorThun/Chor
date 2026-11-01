@@ -303,7 +303,7 @@ const LOGO="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANAAAABpCAYAAABLYa3JAA
 /* ================= MCT Chor-App =================
    Für die aktiven Sänger des Männerchors Thun. Daten in Supabase (gleiche Datenbank wie die Herrenabend-App),
    Zugriff nur über geprüfte Funktionen mit dem persönlichen Code. Dateien im privaten Speicher «chor». */
-const APP_VERSION="1.6"; /* bei jeder Änderung erhöhen */
+const APP_VERSION="1.7"; /* bei jeder Änderung erhöhen */
 const SUPA={url:"https://tvygwnawrkxdhzghxgfv.supabase.co",key:"sb_publishable_yO40Pv19n6Wq0Wh769VZCg_q9BRTBvd"};
 const FILES_FN=SUPA.url+"/functions/v1/chor-files";
 const TYP={probe:{l:"Probe",ic:"🎵"},auftritt:{l:"Auftritt",ic:"🎤"},anlass:{l:"Anlass",ic:"🍷"},ausflug:{l:"Ausflug",ic:"🚌"}};
@@ -323,6 +323,8 @@ const D=x=>new Date(x);
 const fDate=x=>D(x).toLocaleDateString("de-CH",{weekday:"short",day:"numeric",month:"long"});
 const fDateY=x=>D(x).toLocaleDateString("de-CH",{day:"2-digit",month:"2-digit",year:"numeric"});
 const fTime=x=>D(x).toLocaleTimeString("de-CH",{hour:"2-digit",minute:"2-digit"});
+/* Eintreffen: eigener Eintrag, sonst Auftritt 1.5 h, übrige Termine 5 Min. vor Beginn */
+const arrive=e=>e.eintreffen?D(e.eintreffen):new Date(D(e.start).getTime()-(e.typ==="auftritt"?90:5)*6e4);
 const fMonth=x=>D(x).toLocaleDateString("de-CH",{month:"long",year:"numeric"});
 const pad=n=>String(n).padStart(2,"0");
 const isoLocal=x=>{const d=D(x);return`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`};
@@ -368,7 +370,7 @@ function rsvpBtns(e){if(e.abgesagt)return`<span class="chip w">abgesagt</span>`;
 function evCard(e){const t=TYP[e.typ]||TYP.anlass;
   return`<div class="card ev ${e.abgesagt?"cancel":""}" style="margin-bottom:10px"><button class="evhead" data-act="go" data-r="termin/${e.id}">
     <div class="evdate"><b>${D(e.start).getDate()}</b><span>${D(e.start).toLocaleDateString("de-CH",{month:"short"})}</span></div>
-    <div class="grow"><div class="small muted">${t.ic} ${t.l} · ${D(e.start).toLocaleDateString("de-CH",{weekday:"long"})} ${fTime(e.start)}${e.ende?"–"+fTime(e.ende):""}</div><div class="ttl">${esc(e.titel)}</div>${e.ort?`<div class="small muted">📍 ${esc(e.ort)}</div>`:""}
+    <div class="grow"><div class="small muted">${t.ic} ${t.l} · ${D(e.start).toLocaleDateString("de-CH",{weekday:"long"})} ${fTime(e.start)}${e.ende?"–"+fTime(e.ende):""}</div><div class="ttl">${esc(e.titel)}</div>${e.ort?`<div class="small muted">📍 ${esc(e.ort)}</div>`:""}${e.abgesagt?"":`<div class="small muted">🕒 Eintreffen ${fTime(arrive(e))}</div>`}
     <div class="small" style="margin-top:4px"><span style="color:var(--ok)">✓ ${e.ja}</span> · <span style="color:var(--danger)">✗ ${e.nein}</span> · <span class="muted">? ${e.vielleicht}</span>${e.anmeldeschluss?` · <span class="muted">Anmeldeschluss ${fDateY(e.anmeldeschluss)}</span>`:""}</div></div></button>
     <div style="margin-top:10px">${rsvpBtns(e)}</div></div>`}
 
@@ -410,7 +412,7 @@ function vTermin(id){
   const t=TYP[e.typ]||TYP.anlass;
   let h=`<button class="btn ghost sm" data-act="go" data-r="termine" style="margin-bottom:10px">← Termine</button>
     <p class="eyebrow">${t.ic} ${t.l}${e.zaehlt?"":" · zählt nicht für die Statistik"}</p><h1>${esc(e.titel)}</h1>
-    <div class="card">${e.abgesagt?`<div class="note">Dieser Termin ist abgesagt.</div>`:""}<p style="margin:0"><b>${fDate(e.start)}</b>, ${fTime(e.start)}${e.ende?"–"+fTime(e.ende):""} Uhr</p>
+    <div class="card">${e.abgesagt?`<div class="note">Dieser Termin ist abgesagt.</div>`:""}<p style="margin:0"><b>${fDate(e.start)}</b>, ${fTime(e.start)}${e.ende?"–"+fTime(e.ende):""} Uhr</p>${e.abgesagt?"":`<p style="margin:6px 0 0">🕒 Eintreffen: <b>${fTime(arrive(e))} Uhr</b>${e.eintreffen?"":` <span class="small muted">(${e.typ==="auftritt"?"1½ h":"5 Min."} vor Beginn)</span>`}</p>`}
     ${e.ort?`<p style="margin:6px 0 0">📍 <a href="https://maps.google.com/?q=${encodeURIComponent(e.ort)}" target="_blank" rel="noopener">${esc(e.ort)}</a></p>`:""}
     ${e.info?`<p class="small" style="margin:8px 0 0;white-space:pre-wrap">${esc(e.info)}</p>`:""}
     ${e.anmeldeschluss?`<p class="small muted" style="margin:8px 0 0">Anmeldeschluss: ${fDateY(e.anmeldeschluss)} ${fTime(e.anmeldeschluss)}</p>`:""}
@@ -434,6 +436,7 @@ function evForm(e){const d=e||{};const st=d.start?isoLocal(d.start):isoLocal(new
     <select id="ft" class="input">${Object.entries(TYP).map(([k,v])=>`<option value="${k}" ${d.typ===k?"selected":""}>${v.ic} ${v.l}</option>`).join("")}</select>
     <input id="fti" class="input" placeholder="Titel, z.B. Gesangsprobe" value="${esc(d.titel||"")}">
     <label class="small muted">Beginn</label><input id="fs" class="input" type="datetime-local" value="${st}">
+    <label class="small muted">Eintreffen (leer = Standard: Auftritt 1½ h, sonst 5 Min. vor Beginn)</label><input id="fin" class="input" type="time" value="${d.eintreffen?isoLocal(d.eintreffen).slice(11):""}">
     <label class="small muted">Ende (optional)</label><input id="fe" class="input" type="datetime-local" value="${d.ende?isoLocal(d.ende):""}">
     <input id="fo" class="input" placeholder="Ort" value="${esc(d.ort||"")}">
     <textarea id="fi" class="input" placeholder="Infos (Treffpunkt, Kleidung, Noten …)">${esc(d.info||"")}</textarea>
@@ -564,7 +567,7 @@ async function loadBlatt(id){const el=$("#blatt");if(!el)return;let b;
   const st=b.stimmen.sort((a,c)=>ord(a)-ord(c)),tot=st.reduce((s,x)=>s+x.total,0),da=st.reduce((s,x)=>s+x.da,0);
   const lst=(arr,f)=>arr.length?`<ul class="blist">${arr.map(f).join("")}</ul>`:`<p class="small muted" style="margin:0">–</p>`;
   const nm=x=>`<b>${esc(x.name)}</b>${x.stimme?` <span class="muted">(${esc(x.stimme)})</span>`:""}`;
-  el.innerHTML=`<p class="eyebrow">Probenblatt</p><h1 style="margin-bottom:2px">${esc(e.titel)}</h1><p class="muted" style="margin:0 0 12px">${fDate(e.start)} · ${fTime(e.start)} Uhr${e.ort?" · "+esc(e.ort):""}${b.prev?` · letzte Probe ${fDateY(b.prev)}`:""}</p>
+  el.innerHTML=`<p class="eyebrow">Probenblatt</p><h1 style="margin-bottom:2px">${esc(e.titel)}</h1><p class="muted" style="margin:0 0 12px">${fDate(e.start)} · ${fTime(e.start)} Uhr (Eintreffen ${fTime(arrive(e))})${e.ort?" · "+esc(e.ort):""}${b.prev?` · letzte Probe ${fDateY(b.prev)}`:""}</p>
     ${e.info?`<div class="card soft small" style="white-space:pre-wrap">${esc(e.info)}</div>`:""}
     <div class="card"><h3>Präsenz nach Stimmen</h3><table class="t"><tr><th>Stimme</th><th>dabei</th><th>%</th><th>ab</th><th>?</th><th>offen</th></tr>
       ${st.map(x=>`<tr><td>${esc(x.stimme)}</td><td><b>${x.da}</b> / ${x.total}</td><td>${Math.round(x.da/Math.max(1,x.total)*100)}</td><td>${x.ab}</td><td>${x.vielleicht}</td><td>${x.offen}</td></tr>`).join("")}
@@ -1015,7 +1018,7 @@ const A={
   rsvpno:d=>{const g=$("#grund").value;closeModal();call("chor_set_attendance",{p_event:d.id,p_status:"nein",p_grund:g},"Abgemeldet").catch(()=>{})},
   evnew:()=>evForm(null),evedit:d=>evForm(S.events.find(e=>e.id===d.id)),
   evsave:d=>{const v=id=>$(id).value,dt=x=>x?new Date(x).toISOString():null;if(!v("#fti").trim())return toast("Bitte einen Titel angeben");if(!v("#fs"))return toast("Bitte den Beginn angeben");
-    closeModal();call("chor_save_event",{p_id:d.id||null,p_typ:v("#ft"),p_titel:v("#fti"),p_start:dt(v("#fs")),p_ende:dt(v("#fe")),p_ort:v("#fo"),p_info:v("#fi"),p_anmeldeschluss:dt(v("#fa")),p_zaehlt:$("#fz").checked,p_wochen:d.id?0:+(v("#fw")||0)},"Termin gespeichert").catch(()=>{})},
+    closeModal();call("chor_save_event",{p_id:d.id||null,p_typ:v("#ft"),p_titel:v("#fti"),p_start:dt(v("#fs")),p_ende:dt(v("#fe")),p_ort:v("#fo"),p_info:v("#fi"),p_anmeldeschluss:dt(v("#fa")),p_zaehlt:$("#fz").checked,p_wochen:d.id?0:+(v("#fw")||0),p_eintreffen:v("#fin")?dt(v("#fs").slice(0,11)+v("#fin")):null},"Termin gespeichert").catch(()=>{})},
   evaction:d=>{const t={absagen:"Termin absagen?",reaktivieren:"Termin wieder aktivieren?",loeschen:"Termin endgültig löschen (inkl. Rückmeldungen)?",serie_loeschen:"Alle künftigen Termine dieser Serie löschen?"}[d.a];if(!confirm(t))return;
     call("chor_event_action",{p_id:d.id,p_action:d.a},"Erledigt").then(()=>{if(/loeschen/.test(d.a))go("termine")}).catch(()=>{})},
   preall:()=>{document.querySelectorAll(".prchk").forEach(c=>{const p=evPeople.find(x=>x.id===c.dataset.id);c.checked=p&&p.status==="ja"})},
