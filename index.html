@@ -303,7 +303,7 @@ const LOGO="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANAAAABpCAYAAABLYa3JAA
 /* ================= MCT Chor-App =================
    Für die aktiven Sänger des Männerchors Thun. Daten in Supabase (gleiche Datenbank wie die Herrenabend-App),
    Zugriff nur über geprüfte Funktionen mit dem persönlichen Code. Dateien im privaten Speicher «chor». */
-const APP_VERSION="1.7"; /* bei jeder Änderung erhöhen */
+const APP_VERSION="1.8"; /* bei jeder Änderung erhöhen */
 const SUPA={url:"https://tvygwnawrkxdhzghxgfv.supabase.co",key:"sb_publishable_yO40Pv19n6Wq0Wh769VZCg_q9BRTBvd"};
 const FILES_FN=SUPA.url+"/functions/v1/chor-files";
 const TYP={probe:{l:"Probe",ic:"🎵"},auftritt:{l:"Auftritt",ic:"🎤"},anlass:{l:"Anlass",ic:"🍷"},ausflug:{l:"Ausflug",ic:"🚌"}};
@@ -397,7 +397,7 @@ async function loadMyStat(){const el=$("#mystat");if(!el)return;
   try{const s=await rpc("chor_stats",{p_code:S.code,p_jahr:new Date().getFullYear(),p_typ:null});const r=s.rows.find(x=>x.id===S.me.id);
     if(!r||!s.termine){el.innerHTML=`<p class="small muted" style="margin:0">Noch keine vergangenen Termine in diesem Jahr.</p>`;return}
     const q=Math.round(r.praesent/Math.max(1,r.total)*100);
-    el.innerHTML=`<div class="row between"><b>Deine Präsenz ${new Date().getFullYear()}</b><a href="#/statistik" class="small">Statistik</a></div><div class="row" style="margin-top:8px"><div class="bar" style="flex:1"><i style="width:${q}%"></i></div><b>${q}%</b></div><p class="small muted" style="margin:6px 0 0">${r.praesent} von ${r.total} Terminen · ${r.offen} ohne Rückmeldung</p>`}catch(e){el.remove()}}
+    el.innerHTML=`<div class="row between"><b>Deine Präsenz ${new Date().getFullYear()}</b><a href="#/statistik" class="small">Statistik</a></div><div class="row" style="margin-top:8px"><div class="bar" style="flex:1"><i style="width:${q}%"></i></div><b>${q}%</b></div><p class="small muted" style="margin:6px 0 0">${r.praesent} von ${r.total} bisherigen Terminen · ${r.offen} ohne Rückmeldung</p>`}catch(e){el.remove()}}
 function vTermine(){
   const f=S.tFilter,list=(S.tPast?evPast():evFuture()).filter(e=>f==="alle"||e.typ===f);
   let h=`<div class="row between"><h1 style="margin:0">Termine</h1>${isV()?`<button class="btn sm primary" data-act="evnew">+ Termin</button>`:""}</div>
@@ -841,7 +841,8 @@ function vStatistik(){const y=new Date().getFullYear();
 async function loadStat(){const el=$("#stat");if(!el)return;
   try{statData=await rpc("chor_stats",{p_code:S.code,p_jahr:S.statJahr,p_typ:S.statTyp||null})}catch(e){el.innerHTML=`<p class="muted">${esc(e.message)}</p>`;return}
   const rs=statData.rows;if(!statData.termine){el.innerHTML=`<p class="muted">Keine vergangenen Termine in dieser Auswahl.</p>`;return}
-  el.innerHTML=`<p class="small muted">${statData.termine} Termine · Präsenz = erfasste Anwesenheit, sonst Zusage${isV()?"":" · du siehst nur deine eigenen Zahlen"}</p>
+  const fut=S.events.filter(e=>D(e.start)>new Date()&&D(e.start).getFullYear()===S.statJahr&&e.zaehlt!==false&&!e.abgesagt&&(!S.statTyp||e.typ===S.statTyp)).length;
+  el.innerHTML=`<p class="small muted">${statData.termine} bereits erfolgte Termine${fut?` (${fut} künftige werden nicht mitgezählt)`:""} · Präsenz = erfasste Anwesenheit, sonst Zusage${isV()?"":" · du siehst nur deine eigenen Zahlen"}</p>
     <div class="card scroll" style="padding:6px 10px"><table class="t"><tr><th>Name</th><th>Präsenz</th><th>%</th><th>✓</th><th>✗</th><th>?</th><th>–</th></tr>${rs.map(r=>{const q=Math.round(r.praesent/Math.max(1,r.total)*100);
       return`<tr><td>${esc(r.name)} ${esc(r.vorname)}<div class="small muted">${esc(r.stimme||"")}</div></td><td>${r.praesent}/${r.total}<div class="bar" style="width:70px"><i style="width:${q}%"></i></div></td><td><b>${q}</b></td><td>${r.ja}</td><td>${r.nein}</td><td>${r.vielleicht}</td><td>${r.offen}</td></tr>`}).join("")}</table></div>
     ${isV()?`<button class="btn sm" data-act="statcsv">Als CSV herunterladen</button>`:""}`}
