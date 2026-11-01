@@ -304,7 +304,7 @@ const LOGO="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANAAAABpCAYAAABLYa3JAA
 /* ================= MCT Chor-App =================
    Für die aktiven Sänger des Männerchors Thun. Daten in Supabase (gleiche Datenbank wie die Herrenabend-App),
    Zugriff nur über geprüfte Funktionen mit dem persönlichen Code. Dateien im privaten Speicher «chor». */
-const APP_VERSION="2.1"; /* bei jeder Änderung erhöhen */
+const APP_VERSION="2.2"; /* bei jeder Änderung erhöhen */
 const SUPA={url:"https://tvygwnawrkxdhzghxgfv.supabase.co",key:"sb_publishable_yO40Pv19n6Wq0Wh769VZCg_q9BRTBvd"};
 const FILES_FN=SUPA.url+"/functions/v1/chor-files";
 const TYP={probe:{l:"Probe",ic:"🎵"},auftritt:{l:"Auftritt",ic:"🎤"},anlass:{l:"Anlass",ic:"🍷"},ausflug:{l:"Ausflug",ic:"🚌"}};
@@ -1005,7 +1005,7 @@ const A={
   dlone:d=>{const x=S.files.find(f=>f.id===d.id);dlOne(x).catch(e=>toast(e.message))},
   dlmine:()=>dlZip(S.files.filter(isMine).sort((a,b)=>(a.lied||"").localeCompare(b.lied||"")),`MCT Unterlagen ${S.me.stimme}.zip`),
   dllied:d=>dlZip(S.files.filter(x=>(x.lied||"Allgemein")===d.l&&isMine(x)),`${safeName(d.l)} – ${S.me.stimme}.zip`),
-  toha:()=>{const base=location.origin+"/Herrenabend/";location.href=base+"?"+(S.code?"c="+encodeURIComponent(S.code)+"&":"")+"pick=1"},
+  toha:()=>{const base=location.origin+"/Herrenabend/";location.href=base+"?"+(S.code?"c="+encodeURIComponent(S.code)+"&":"")+(S.me&&S.me.vorname?"n="+encodeURIComponent(S.me.vorname)+"&":"")+"pick=1"},
   pick:d=>{try{sessionStorage.setItem("chor_pick","1")}catch(e){}if($("#nomore")?.checked)store.set("chor_nopick","1");if(d.a==="ha")return A.toha();render()},
   psel:d=>{const p=S.polls.find(x=>x.id===d.id),i=+d.i;let sel=[...(S.pollSel[p.id]||p.mine||[])];if(p.mehrfach)sel=sel.includes(i)?sel.filter(x=>x!==i):[...sel,i];else sel=[i];S.pollSel[p.id]=sel;render()},
   pvote:d=>{const p=S.polls.find(x=>x.id===d.id),sel=S.pollSel[p.id]||p.mine||[];if(!sel.length)return toast("Bitte eine Antwort wählen");
