@@ -303,7 +303,7 @@ const LOGO="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANAAAABpCAYAAABLYa3JAA
 /* ================= MCT Chor-App =================
    Für die aktiven Sänger des Männerchors Thun. Daten in Supabase (gleiche Datenbank wie die Herrenabend-App),
    Zugriff nur über geprüfte Funktionen mit dem persönlichen Code. Dateien im privaten Speicher «chor». */
-const APP_VERSION="1.5"; /* bei jeder Änderung erhöhen */
+const APP_VERSION="1.6"; /* bei jeder Änderung erhöhen */
 const SUPA={url:"https://tvygwnawrkxdhzghxgfv.supabase.co",key:"sb_publishable_yO40Pv19n6Wq0Wh769VZCg_q9BRTBvd"};
 const FILES_FN=SUPA.url+"/functions/v1/chor-files";
 const TYP={probe:{l:"Probe",ic:"🎵"},auftritt:{l:"Auftritt",ic:"🎤"},anlass:{l:"Anlass",ic:"🍷"},ausflug:{l:"Ausflug",ic:"🚌"}};
@@ -318,6 +318,7 @@ const full=p=>p?`${p.vorname||""} ${p.name||""}`.trim():"";
 const ini=p=>(((p?.vorname||"")[0]||"")+((p?.name||"")[0]||"")).toUpperCase()||"?";
 const P=id=>S.members.find(m=>m.id===id)||(S.me&&S.me.id===id?S.me:null);
 const isV=()=>!!(S.me&&S.me.vorstand);
+const isN=()=>isV()||!!(S.me&&S.me.noten); /* darf Noten & Audio hochladen */
 const D=x=>new Date(x);
 const fDate=x=>D(x).toLocaleDateString("de-CH",{weekday:"short",day:"numeric",month:"long"});
 const fDateY=x=>D(x).toLocaleDateString("de-CH",{day:"2-digit",month:"2-digit",year:"numeric"});
@@ -478,7 +479,7 @@ function vMaterial(){
   const SO=["","1. Tenor","2. Tenor","Tenöre","1. Bass","2. Bass","Bässe"],AO=["noten","text","audio","video","sonstiges"];
   const fs=S.files.filter(x=>(f==="alle"||(f==="mine"?mine(x):x.art===f))&&(!q||[x.titel,x.lied,x.stimme].join(" ").toLowerCase().includes(q)))
     .sort((a,b)=>AO.indexOf(a.art)-AO.indexOf(b.art)||SO.indexOf(a.stimme||"")-SO.indexOf(b.stimme||"")||a.titel.localeCompare(b.titel));
-  let h=`<div class="row between"><h1 style="margin:0">Noten & Aufnahmen</h1>${isV()?`<button class="btn sm primary" data-act="upnew">+ Hochladen</button>`:""}</div>
+  let h=`<div class="row between"><h1 style="margin:0">Noten & Aufnahmen</h1>${isN()?`<button class="btn sm primary" data-act="upnew">+ Hochladen</button>`:""}</div>
     <p class="muted small">Nur für die aktiven Sänger – bitte nicht weitergeben.</p>
     ${S.me.stimme&&S.files.length?(()=>{const ms=S.files.filter(isMine),mb=ms.reduce((a,x)=>a+(x.groesse||0),0);return`<div class="card soft"><div class="row between"><div><b>⬇ Meine Unterlagen · ${esc(S.me.stimme)}</b><div class="small muted">${ms.filter(x=>x.art==="noten").length} Noten, ${ms.filter(x=>x.art==="audio").length} Aufnahmen (eigene Stimme und Gesamtaufnahmen) · ${fSize(mb)}</div></div>
       <button class="btn sm primary" data-act="dlmine">Alle als ZIP</button></div><p class="small muted" style="margin:6px 0 0">Die ZIP-Datei enthält einen Ordner pro Lied. Auf dem Handy am besten im WLAN herunterladen.</p></div>`})():""}
@@ -487,7 +488,7 @@ function vMaterial(){
   const groups=new Map();for(const x of fs){const k=x.lied||"Allgemein";if(!groups.has(k))groups.set(k,[]);groups.get(k).push(x)}
   for(const[l,xs]of[...groups].sort((a,b)=>a[0].localeCompare(b[0])))h+=`<div class="card"><div class="row between"><h3 style="margin:0">${esc(l)}</h3>${S.me.stimme&&S.files.some(x=>(x.lied||"Allgemein")===l&&isMine(x))?`<button class="btn sm ghost" data-act="dllied" data-l="${esc(l)}" title="Noten und Aufnahmen meiner Stimme für dieses Lied">⬇ meine Stimme</button>`:""}</div><div class="list">${xs.map(x=>`<div class="li" style="cursor:default"><div class="av">${(ART[x.art]||ART.sonstiges).ic}</div><div class="grow"><div class="nm">${esc(x.titel)}</div><div class="sub">${(ART[x.art]||ART.sonstiges).l}${x.stimme?" · "+esc(x.stimme):""}${x.groesse?" · "+fSize(x.groesse):""}</div>
     ${x.art==="audio"&&S.play===x.id&&S.urls[x.path]?`<audio controls autoplay src="${S.urls[x.path]}" style="width:100%;margin-top:6px"></audio>`:""}${x.art==="video"&&S.play===x.id&&S.urls[x.path]?`<video controls autoplay src="${S.urls[x.path]}" style="width:100%;margin-top:6px;border-radius:8px"></video>`:""}</div>
-    <div class="row" style="flex-wrap:nowrap">${x.art==="audio"||x.art==="video"?`<button class="btn sm" data-act="play" data-id="${x.id}">▶</button>`:""}<button class="btn sm" data-act="open" data-id="${x.id}">Öffnen</button><button class="btn sm" data-act="dlone" data-id="${x.id}" aria-label="herunterladen" title="herunterladen">⬇</button>${isV()?`<button class="btn sm ghost" data-act="fdel" data-id="${x.id}" aria-label="löschen">✕</button>`:""}</div></div>`).join("")}</div></div>`;
+    <div class="row" style="flex-wrap:nowrap">${x.art==="audio"||x.art==="video"?`<button class="btn sm" data-act="play" data-id="${x.id}">▶</button>`:""}<button class="btn sm" data-act="open" data-id="${x.id}">Öffnen</button><button class="btn sm" data-act="dlone" data-id="${x.id}" aria-label="herunterladen" title="herunterladen">⬇</button>${isV()||(isN()&&x.own)?`<button class="btn sm ghost" data-act="fdel" data-id="${x.id}" aria-label="löschen">✕</button>`:""}</div></div>`).join("")}</div></div>`;
   if(!fs.length)h+=`<p class="muted">${S.files.length?"Nichts gefunden.":"Noch keine Dateien hochgeladen."}</p>`;
   return h}
 function upForm(){const lieder=[...new Set(S.files.map(f=>f.lied).filter(Boolean))].sort();
@@ -845,6 +846,8 @@ function vVerwaltung(){if(!isV())return`<p class="muted">Nur für den Vorstand.<
   return`<button class="btn ghost sm" data-act="go" data-r="mehr" style="margin-bottom:10px">← Mehr</button><h1>Verwaltung</h1>
   <div class="card"><h3>Sänger aktivieren</h3><p class="small muted">Mitglied suchen und als aktiven Sänger oder Vorstand freischalten. Das Mitglied meldet sich mit seinem persönlichen Code an (derselbe wie für die Herrenabend-App).</p>
     <input id="vsq" class="input" placeholder="Name suchen (mind. 2 Buchstaben) …" autocomplete="off"><div class="list" id="vsres" style="margin-top:6px"></div></div>
+  <div class="card"><h3>Noten-Berechtigung</h3><p class="small muted">Diese Sänger dürfen Noten und Aufnahmen hochladen und ihre eigenen Dateien löschen, auch ohne Vorstand zu sein. Der Vorstand darf das immer.</p>
+    ${[...S.members].filter(m=>m.aktiv&&m.rolle!=="vorstand").sort((a,b)=>a.name.localeCompare(b.name)).map(m=>`<label class="row small" style="padding:3px 0"><input type="checkbox" data-chg="noten" data-id="${m.id}" ${m.noten?"checked":""}> ${esc(m.name)} ${esc(m.vorname)}${m.stimme?` <span class="muted">· ${esc(m.stimme)}</span>`:""}</label>`).join("")}</div>
   <div class="card"><h3>Import (Webling oder Access)</h3><p class="small muted">CSV-Datei hochladen. Erkannt werden u.a.: <code>Mitglieder ID</code>, <code>Vorname</code>, <code>Name</code>/<code>Nachname</code>, <code>Gruppen</code> (aktiv bei «aktive Sänger»), <code>Stimme</code>, <code>Geburtsdatum</code>, <code>Eintrittsdatum</code>, <code>Austrittsdatum</code>, <code>Strasse</code>, <code>PLZ</code>, <code>Ort</code>, <code>Mobile</code>/<code>Telefon</code>, <code>E-Mail</code>, <code>Beruf</code>. Aus der Access-Datenbank zusätzlich <code>Vorstand</code>, <code>Charge</code>, Veteranen- und Ehrenfelder, <code>Proben gesamt</code>, <code>Fleisskarten</code>, <code>Silberbecher</code> und <code>Geschichte</code> – sie landen im Stammblatt bzw. in der History. Bestehende Angaben werden nur ergänzt, nicht gelöscht. Excel-Dateien (.xlsx) gehen auch.</p>
     <input type="file" id="impfile" accept=".csv,.xlsx,.xls,text/csv" class="input"><label class="row small" style="margin-top:6px"><input type="checkbox" id="impnur" checked> Bei Access-Daten: Ehemalige auslassen (nur bereits erfasste aktive Sänger ergänzen)</label><label class="row small" style="margin-top:4px"><input type="checkbox" id="impfun" checked> Bei Access-Daten: Funktionen aus «Geschichte» nach Vorstand &amp; Chargen übernehmen (alle, auch Ehemalige)</label>${S.busy?`<div class="note" style="margin-top:8px">⏳ ${esc(S.busy)}</div>`:""}${S.impInfo?`<div class="okmsg" style="margin-top:8px">${esc(S.impInfo)}</div>`:""}</div>
   <div class="card"><h3>Teilnahmen aus SpielerPlus</h3><p class="small muted">Statistik-Export aus SpielerPlus (CSV) hochladen. Die Zu- und Absagen werden den Terminen am gleichen Datum zugeordnet. Fehlt ein Termin, wird er angelegt; gibt es an dem Tag genau einen anderen Termin, wird dessen Titel übernommen. Mehrfaches Importieren ist kein Problem.</p>
@@ -1059,6 +1062,7 @@ document.addEventListener("change",e=>{const el=e.target;
   if(el.id==="spfile"&&el.files[0]){const r=new FileReader();r.onload=()=>doSpImport(String(r.result));r.readAsText(el.files[0],"utf-8")}
   if(el.id==="impfile"&&el.files[0]){const f=el.files[0];if(/\.xlsx?$/i.test(f.name)){readXlsx(f).then(doImport).catch(e=>toast(e.message))}else{const r=new FileReader();r.onload=()=>doImport(String(r.result));r.readAsText(f,"utf-8")}}
   if(el.dataset.chg==="sjahr"){S.statJahr=+el.value;render()}
+  if(el.dataset.chg==="noten"){const on=el.checked;rpc("chor_set_noten",{p_code:S.code,p_person:el.dataset.id,p_on:on}).then(async()=>{await load();render();toast(on?"Noten-Berechtigung erteilt":"Noten-Berechtigung entfernt")}).catch(err=>{el.checked=!on;toast(err.message)})}
   if(el.dataset.chg==="ahnen"&&el.value){go("ahnen/"+encodeURIComponent(el.value))}
   if(el.dataset.chg==="ehrjahr"){S.ehrJahr=+el.value;render()}
   if(el.dataset.chg==="styp"){S.statTyp=el.value;render()}
