@@ -304,7 +304,7 @@ const LOGO="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANAAAABpCAYAAABLYa3JAA
 /* ================= MCT Chor-App =================
    Für die aktiven Sänger des Männerchors Thun. Daten in Supabase (gleiche Datenbank wie die Herrenabend-App),
    Zugriff nur über geprüfte Funktionen mit dem persönlichen Code. Dateien im privaten Speicher «chor». */
-const APP_VERSION="2.2"; /* bei jeder Änderung erhöhen */
+const APP_VERSION="2.4"; /* bei jeder Änderung erhöhen */
 const SUPA={url:"https://tvygwnawrkxdhzghxgfv.supabase.co",key:"sb_publishable_yO40Pv19n6Wq0Wh769VZCg_q9BRTBvd"};
 const FILES_FN=SUPA.url+"/functions/v1/chor-files";
 const TYP={probe:{l:"Probe",ic:"🎵"},auftritt:{l:"Auftritt",ic:"🎤"},anlass:{l:"Anlass",ic:"🍷"},ausflug:{l:"Ausflug",ic:"🚌"}};
@@ -345,8 +345,14 @@ const call=(fn,args,msg)=>rpc(fn,{p_code:S.code,...args}).then(async x=>{await l
 async function filesFn(body){const r=await fetch(FILES_FN,{method:"POST",headers:{"Content-Type":"application/json",apikey:SUPA.key},body:JSON.stringify({code:S.code,...body})});
   const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||("Fehler "+r.status));return j}
 
+
+/* iOS/Android «Zum Home-Bildschirm»: Manifest mit persönlicher Start-Adresse (Code + Vorname), damit die installierte App den Benutzer kennt */
+function personalManifest(code,vname){try{if(!code)return;const l=document.querySelector('link[rel="manifest"]');if(!l)return;
+  const base=location.origin+location.pathname.replace(/index\.html$/,""),q="?c="+encodeURIComponent(code)+(vname?"&n="+encodeURIComponent(vname):"");
+  const m={"name": "Chor-App Männerchor Thun", "short_name": "Chor MCT", "scope": "./", "display": "standalone", "background_color": "#faf7f4", "theme_color": "#de1034", "lang": "de-CH", "icons": [{"src": "icon-192.png", "sizes": "192x192", "type": "image/png"}, {"src": "icon-512.png", "sizes": "512x512", "type": "image/png"}, {"src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}]};m.start_url=base+q;m.id=base;m.scope=base;m.icons=m.icons.map(i=>({...i,src:base+i.src}));
+  l.setAttribute("href","data:application/manifest+json,"+encodeURIComponent(JSON.stringify(m)))}catch(e){}}
 async function load(){
-  const s=await rpc("chor_session",{p_code:S.code});
+  const s=await rpc("chor_session",{p_code:S.code});personalManifest(S.code,s.me&&s.me.vorname);
   S.me=s.me;S.members=s.members;S.events=s.events;S.posts=s.posts;S.files=s.files;S.board=(s.board||[]).map(b=>({...b,funktion:normF(b.funktion)}));S.congratsMe=s.congrats_me;S.congratsGiven=s.congrats_given;S.polls=s.polls||[];S.absences=s.absences||[];S.pollSel=S.pollSel||{};
   S.lastPost=S.posts.length?S.posts[S.posts.length-1].created_at:new Date(0).toISOString();
 }
@@ -649,7 +655,7 @@ let ehemData=null;
 function vEhemalige(){setTimeout(loadEhem,0);return`<button class="btn ghost sm" data-act="go" data-r="mitglieder" style="margin-bottom:10px">← Sänger</button><div class="row between"><h1 style="margin:0">Ehemalige Sänger</h1>${PBTN}</div><p class="muted small">Frühere aktive Sänger des Männerchors Thun.</p><input id="ehq" class="input" placeholder="Name suchen …" style="margin-bottom:8px"><div id="ehem"><p class="muted small">wird geladen …</p></div>`}
 async function loadEhem(){const el=$("#ehem");if(!el)return;try{ehemData=ehemData||await rpc("chor_ehemalige",{p_code:S.code})}catch(e){el.innerHTML=`<p class="muted">${esc(e.message)}</p>`;return}renderEhem()}
 function renderEhem(){const el=$("#ehem");if(!el||!ehemData)return;const q=($("#ehq")?.value||"").toLowerCase().trim(),xs=ehemData.filter(x=>!q||(x.vorname+" "+x.name+" "+x.name).toLowerCase().includes(q));
-  el.innerHTML=`<p class="small muted" style="margin:0 0 6px">${xs.length} Personen</p><div class="card"><div class="list">${xs.map(x=>`<${isV()?`button class="li" data-act="go" data-r="stamm/${x.id}"`:'div class="li" style="cursor:default"'}><div class="av">${ini(x)}</div><div class="grow"><div class="nm">${esc(x.name)} ${esc(x.vorname)}</div><div class="sub">${x.von?`aktiv ab ${x.von}`:""}${x.bis?` bis ${x.bis}`:""}${x.jahre?` · ${esc(x.jahre)} aktive Jahre`:""}${x.ehrungen?` · ${esc(x.ehrungen)}`:""}</div></div></${isV()?"button":"div"}>`).join("")||`<p class="muted small">Niemand gefunden.</p>`}</div></div>`}
+  el.innerHTML=`<p class="small muted" style="margin:0 0 6px">${xs.length} Personen</p><div class="card"><div class="list">${xs.map(x=>`<${isL()?`button class="li" data-act="go" data-r="stamm/${x.id}"`:'div class="li" style="cursor:default"'}><div class="av">${ini(x)}</div><div class="grow"><div class="nm">${esc(x.name)} ${esc(x.vorname)}</div><div class="sub">${x.von?`aktiv ab ${x.von}`:""}${x.bis?` bis ${x.bis}`:""}${x.jahre?` · ${esc(x.jahre)} aktive Jahre`:""}${x.ehrungen?` · ${esc(x.ehrungen)}`:""}</div></div></${isV()?"button":"div"}>`).join("")||`<p class="muted small">Niemand gefunden.</p>`}</div></div>`}
 function vGeburtstage(){const bd=bdays();
   return`<button class="btn ghost sm" data-act="go" data-r="mehr" style="margin-bottom:10px">← Mehr</button><div class="row between"><h1 style="margin:0">Geburtstage</h1>${PBTN}</div><p class="muted">Nur Tag und Monat sind für alle sichtbar.</p><div class="card"><div class="list">${bd.map(bdayRow).join("")||`<p class="muted">Noch keine Geburtstage erfasst.</p>`}</div></div>`}
 let stammCache=null;
@@ -862,7 +868,7 @@ function vVerwaltung(){if(!isV())return`<p class="muted">Nur für den Vorstand.<
   <div class="card"><h3>Noten-Berechtigung</h3><p class="small muted">Diese Sänger dürfen Noten und Aufnahmen hochladen und ihre eigenen Dateien löschen, auch ohne Vorstand zu sein. Der Vorstand darf das immer.</p>
     ${[...S.members].filter(m=>m.aktiv&&m.rolle!=="vorstand").sort((a,b)=>a.name.localeCompare(b.name)).map(m=>`<label class="row small" style="padding:3px 0"><input type="checkbox" data-chg="noten" data-id="${m.id}" ${m.noten?"checked":""}> ${esc(m.name)} ${esc(m.vorname)}${m.stimme?` <span class="muted">· ${esc(m.stimme)}</span>`:""}</label>`).join("")}</div>
   <div class="card"><h3>Import (Webling oder Access)</h3><p class="small muted">CSV-Datei hochladen. Erkannt werden u.a.: <code>Mitglieder ID</code>, <code>Vorname</code>, <code>Name</code>/<code>Nachname</code>, <code>Gruppen</code> (aktiv bei «aktive Sänger»), <code>Stimme</code>, <code>Geburtsdatum</code>, <code>Eintrittsdatum</code>, <code>Austrittsdatum</code>, <code>Strasse</code>, <code>PLZ</code>, <code>Ort</code>, <code>Mobile</code>/<code>Telefon</code>, <code>E-Mail</code>, <code>Beruf</code>. Aus der Access-Datenbank zusätzlich <code>Vorstand</code>, <code>Charge</code>, Veteranen- und Ehrenfelder, <code>Proben gesamt</code>, <code>Fleisskarten</code>, <code>Silberbecher</code> und <code>Geschichte</code> – sie landen im Stammblatt bzw. in der History. Bestehende Angaben werden nur ergänzt, nicht gelöscht. Excel-Dateien (.xlsx) gehen auch.</p>
-    <input type="file" id="impfile" accept=".csv,.xlsx,.xls,text/csv" class="input"><label class="row small" style="margin-top:6px"><input type="checkbox" id="impnur" checked> Bei Access-Daten: Ehemalige auslassen (nur bereits erfasste aktive Sänger ergänzen)</label><label class="row small" style="margin-top:4px"><input type="checkbox" id="impfun" checked> Bei Access-Daten: Funktionen aus «Geschichte» nach Vorstand &amp; Chargen übernehmen (alle, auch Ehemalige)</label>${S.busy?`<div class="note" style="margin-top:8px">⏳ ${esc(S.busy)}</div>`:""}${S.impInfo?`<div class="okmsg" style="margin-top:8px">${esc(S.impInfo)}</div>`:""}</div>
+    <input type="file" id="impfile" accept=".csv,.xlsx,.xls,text/csv" class="input"><label class="row small" style="margin-top:6px"><input type="checkbox" id="impnur"> Bei Access-Daten: nur aktive Sänger (ohne Haken werden auch frühere Sänger mit ihrer History übernommen – als «ehemalig»)</label><label class="row small" style="margin-top:4px"><input type="checkbox" id="impfun" checked> Bei Access-Daten: Funktionen aus «Geschichte» nach Vorstand &amp; Chargen übernehmen (alle, auch Ehemalige)</label>${S.busy?`<div class="note" style="margin-top:8px">⏳ ${esc(S.busy)}</div>`:""}${S.impInfo?`<div class="okmsg" style="margin-top:8px">${esc(S.impInfo)}</div>`:""}</div>
   <div class="card"><h3>Teilnahmen aus SpielerPlus</h3><p class="small muted">Statistik-Export aus SpielerPlus (CSV) hochladen. Die Zu- und Absagen werden den Terminen am gleichen Datum zugeordnet. Fehlt ein Termin, wird er angelegt; gibt es an dem Tag genau einen anderen Termin, wird dessen Titel übernommen. Mehrfaches Importieren ist kein Problem.</p>
     <input type="file" id="spfile" accept=".csv,text/csv" class="input">${S.spInfo?`<div class="okmsg" style="margin-top:8px">${S.spInfo}</div>`:""}</div>
   <div class="card soft small"><b>Datenschutz:</b> Adressen, Telefon und Geburtsjahr sehen nur die Person selbst und der Vorstand. Alle Aktiven sehen Name, Stimme und Geburtstag (Tag/Monat).</div>`}
@@ -942,8 +948,8 @@ function accBoardRows(txt){const R=Array.isArray(txt)?txt.map(r=>r.map(v=>v==nul
   return out}
 async function doImport(txt){const b=buildImport(txt);if(b.err)return toast(b.err);if(!b.rows.length)return toast("Keine Personen gefunden");
   const hd0=(Array.isArray(txt)?txt[0]:csvRows(txt)[0]).map(h=>String(h||"").trim().toLowerCase()),access=hd0.includes("nachname")&&(hd0.includes("proben gesamt")||hd0.includes("geschichte"));
-  const nur=access&&$("#impnur")?.checked!==false;
-  if(access){if(!confirm(`Access-Daten: ${b.rows.length} Personen.\n${nur?"Ehemalige werden ausgelassen – nur bereits erfasste aktive Sänger werden ergänzt.":"Alle Personen werden übernommen (auch Ehemalige)."}\nBestehende Angaben (z.B. aus Webling) bleiben; nur leere Felder, Ehrungen, Geschichte und History werden ergänzt.`))return;
+  const nur=access&&$("#impnur")?.checked===true;
+  if(access){if(!confirm(`Access-Daten: ${b.rows.length} Personen.\n${nur?"Ehemalige werden ausgelassen – nur bereits erfasste aktive Sänger werden ergänzt.":"Alle Personen werden übernommen. Frühere Sänger erscheinen mit ihrer History unter «Ehemalige Sänger»."}\nBestehende Angaben (z.B. aus Webling) bleiben; nur leere Felder, Ehrungen, Geschichte und History werden ergänzt.`))return;
     let m=0,hh=0,sk=0;try{for(let i=0;i<b.rows.length;i+=150){S.busy=`Import ${Math.min(i+150,b.rows.length)} von ${b.rows.length} …`;render();
       const r=await rpc("chor_import",{p_code:S.code,p_rows:b.rows.slice(i,i+150),p_ergaenzen:true,p_nur_aktive:nur});m+=r.zugeordnet;hh+=r.history;sk+=r.ausgelassen||0}
       S.busy=null;S.impInfo=`✓ Access: ${m} aktive Sänger ergänzt, ${hh} History-Einträge${nur?`, ${sk} Ehemalige ausgelassen`:""}.`;
