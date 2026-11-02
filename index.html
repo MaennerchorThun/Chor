@@ -7,7 +7,9 @@
 <meta name="theme-color" content="#de1034">
 <meta name="color-scheme" content="light only">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="manifest" href="manifest.webmanifest">
+<script>/* iOS: ohne Manifest übernimmt «Zum Home-Bildschirm» die aktuelle Adresse samt persönlichem Code (?c=…&n=…). Mit Manifest schneidet iOS sie ab. */
+(function(){var ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+if(!ios){var l=document.createElement("link");l.rel="manifest";l.href="manifest.webmanifest";document.head.appendChild(l)}})();</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Chor MCT">
@@ -304,7 +306,7 @@ const LOGO="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANAAAABpCAYAAABLYa3JAA
 /* ================= MCT Chor-App =================
    Für die aktiven Sänger des Männerchors Thun. Daten in Supabase (gleiche Datenbank wie die Herrenabend-App),
    Zugriff nur über geprüfte Funktionen mit dem persönlichen Code. Dateien im privaten Speicher «chor». */
-const APP_VERSION="2.4"; /* bei jeder Änderung erhöhen */
+const APP_VERSION="2.5"; /* bei jeder Änderung erhöhen */
 const SUPA={url:"https://tvygwnawrkxdhzghxgfv.supabase.co",key:"sb_publishable_yO40Pv19n6Wq0Wh769VZCg_q9BRTBvd"};
 const FILES_FN=SUPA.url+"/functions/v1/chor-files";
 const TYP={probe:{l:"Probe",ic:"🎵"},auftritt:{l:"Auftritt",ic:"🎤"},anlass:{l:"Anlass",ic:"🍷"},ausflug:{l:"Ausflug",ic:"🚌"}};
@@ -985,7 +987,7 @@ function vLogin(msg){$("#tabs").hidden=true;$("#app").innerHTML=`<div class="fot
   <p class="small muted" style="margin-top:12px">Der Code ist derselbe wie für die Herrenabend-App (aus der Webling-Mail).</p><p class="small muted" style="margin:6px 0 0">Version ${APP_VERSION}</p></div>`}
 async function login(code){S.code=String(code||"").trim().toUpperCase().replace(/[^A-Z0-9]/g,"");if(!S.code)return vLogin();
   $("#app").innerHTML=`<p class="muted" style="text-align:center;margin-top:60px">Lade …</p>`;
-  try{await load();store.set("chor_code",S.code);try{const u=new URL(location.href);if(u.searchParams.has("c")){u.searchParams.delete("c");history.replaceState(null,"",u.toString())}}catch(e){}render();startPoll()}
+  try{await load();store.set("chor_code",S.code);try{const u=new URL(location.href);u.searchParams.set("c",S.code);if(S.me&&S.me.vorname)u.searchParams.set("n",S.me.vorname);history.replaceState(null,"",u.toString())}catch(e){}render();startPoll()}
   catch(e){S.me=null;store.set("chor_code",null);vLogin(/Code unbekannt/.test(e.message)?"Code unbekannt – bitte prüfen.":e.message)}}
 let pollT=null;function startPoll(){clearInterval(pollT);pollT=setInterval(async()=>{if(document.hidden||!S.me)return;
   try{const np=await rpc("chor_poll",{p_code:S.code,p_after:S.lastPost});if(np&&np.length){const known=new Set(S.posts.map(p=>p.id));const add=np.filter(p=>!known.has(p.id));if(!add.length)return;
