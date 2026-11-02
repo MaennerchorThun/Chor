@@ -306,7 +306,7 @@ const LOGO="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANAAAABpCAYAAABLYa3JAA
 /* ================= MCT Chor-App =================
    Für die aktiven Sänger des Männerchors Thun. Daten in Supabase (gleiche Datenbank wie die Herrenabend-App),
    Zugriff nur über geprüfte Funktionen mit dem persönlichen Code. Dateien im privaten Speicher «chor». */
-const APP_VERSION="2.5"; /* bei jeder Änderung erhöhen */
+const APP_VERSION="2.6"; /* bei jeder Änderung erhöhen */
 const SUPA={url:"https://tvygwnawrkxdhzghxgfv.supabase.co",key:"sb_publishable_yO40Pv19n6Wq0Wh769VZCg_q9BRTBvd"};
 const FILES_FN=SUPA.url+"/functions/v1/chor-files";
 const TYP={probe:{l:"Probe",ic:"🎵"},auftritt:{l:"Auftritt",ic:"🎤"},anlass:{l:"Anlass",ic:"🍷"},ausflug:{l:"Ausflug",ic:"🚌"}};
@@ -655,6 +655,7 @@ function vMitglieder(){const act=S.members.filter(m=>m.aktiv);
   return h}
 let ehemData=null;
 function vEhemalige(){setTimeout(loadEhem,0);return`<button class="btn ghost sm" data-act="go" data-r="mitglieder" style="margin-bottom:10px">← Sänger</button><div class="row between"><h1 style="margin:0">Ehemalige Sänger</h1>${PBTN}</div><p class="muted small">Frühere aktive Sänger des Männerchors Thun.</p><input id="ehq" class="input" placeholder="Name suchen …" style="margin-bottom:8px"><div id="ehem"><p class="muted small">wird geladen …</p></div>`}
+async function ehemLoad(){if(ehemData||!isL())return;try{ehemData=await rpc("chor_ehemalige",{p_code:S.code})}catch(e){}}
 async function loadEhem(){const el=$("#ehem");if(!el)return;try{ehemData=ehemData||await rpc("chor_ehemalige",{p_code:S.code})}catch(e){el.innerHTML=`<p class="muted">${esc(e.message)}</p>`;return}renderEhem()}
 function renderEhem(){const el=$("#ehem");if(!el||!ehemData)return;const q=($("#ehq")?.value||"").toLowerCase().trim(),xs=ehemData.filter(x=>!q||(x.vorname+" "+x.name+" "+x.name).toLowerCase().includes(q));
   el.innerHTML=`<p class="small muted" style="margin:0 0 6px">${xs.length} Personen</p><div class="card"><div class="list">${xs.map(x=>`<${isL()?`button class="li" data-act="go" data-r="stamm/${x.id}"`:'div class="li" style="cursor:default"'}><div class="av">${ini(x)}</div><div class="grow"><div class="nm">${esc(x.name)} ${esc(x.vorname)}</div><div class="sub">${x.von?`aktiv ab ${x.von}`:""}${x.bis?` bis ${x.bis}`:""}${x.jahre?` · ${esc(x.jahre)} aktive Jahre`:""}${x.ehrungen?` · ${esc(x.ehrungen)}`:""}</div></div></${isV()?"button":"div"}>`).join("")||`<p class="muted small">Niemand gefunden.</p>`}</div></div>`}
@@ -827,13 +828,13 @@ function bForm(b){const d=b||{},y=new Date().getFullYear(),g=d.gremium||S.gTab||
   modal(`<h2>${b?"Funktion bearbeiten":"Funktion erfassen"}</h2><div style="display:grid;gap:8px">
     <select id="bg" class="input">${Object.entries(GREMIEN).map(([k,l])=>`<option value="${k}" ${g===k?"selected":""}>${l}</option>`).join("")}</select>
     <input id="bf" class="input" list="flist" placeholder="Funktion, z.B. Präsident oder Fähnrich" value="${esc(d.funktion||"")}" onchange="const g=gremOf(this.value,null);if(g)document.getElementById('bg').value=g"><datalist id="flist">${[...FUNKTIONEN,...CHARGEN].map(f=>`<option value="${f}">`).join("")}</datalist>
-    <select id="bp" class="input"><option value="">– Person aus der Liste –</option>${[...S.members].sort((a,b)=>a.name.localeCompare(b.name)).map(m=>`<option value="${m.id}" ${d.person_id===m.id?"selected":""}>${esc(m.name)} ${esc(m.vorname)}</option>`).join("")}</select>
+    <select id="bp" class="input"><option value="">– Person aus der Liste –</option><optgroup label="Aktive">${[...S.members].sort((a,b)=>a.name.localeCompare(b.name)).map(m=>`<option value="${m.id}" ${d.person_id===m.id?"selected":""}>${esc(m.name)} ${esc(m.vorname)}</option>`).join("")}</optgroup>${ehemData&&ehemData.length?`<optgroup label="Ehemalige">${[...ehemData].filter(x=>!S.members.some(m=>m.id===x.id)).sort((a,b)=>(a.name||"").localeCompare(b.name||"")).map(m=>`<option value="${m.id}" ${d.person_id===m.id?"selected":""}>${esc(m.name)} ${esc(m.vorname)}</option>`).join("")}</optgroup>`:""}</select>
     <input id="bn" class="input" placeholder="oder Name (z.B. für frühere Mitglieder)" value="${esc(d.person_id?"":d.name||"")}">
     <div class="form2" style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><input id="bv" class="input" type="number" placeholder="von Jahr" value="${d.von||y}"><input id="bb" class="input" type="number" placeholder="bis Jahr (leer = heute)" value="${d.bis||""}"></div></div>
     <div class="row" style="margin-top:12px"><button class="btn primary" data-act="bsave" data-id="${b?b.id:""}">Speichern</button>${b?`<button class="btn ghost" data-act="bdel" data-id="${b.id}">Löschen</button>`:""}<button class="btn ghost" data-act="close">Abbrechen</button></div>`)}
 /* Liste einfügen: eine Zeile pro Funktion, «Name ; Funktion» (auch Tabulator oder 2+ Leerzeichen) */
 const nkey=t=>String(t||"").normalize("NFC").toLowerCase().replace(/\b(dr|prof|lic|med)\.?\s+/g,"").replace(/[^a-zäöüéèàç]+/g," ").trim();
-function matchMember(name){const k=nkey(name);if(!k)return null;return S.members.find(m=>nkey(m.vorname+" "+m.name)===k||nkey(m.name+" "+m.vorname)===k)||null}
+function matchMember(name){const k=nkey(name);if(!k)return null;const hit=m=>nkey(m.vorname+" "+m.name)===k||nkey(m.name+" "+m.vorname)===k;return S.members.find(hit)||(ehemData||[]).find(hit)||null}
 function parseBulk(txt){const out=[],seen=new Set();for(let line of String(txt).split(/\r?\n/)){line=line.replace(/^[\s➢>•\-–*]+/,"").trim();if(!line)continue;
     let parts=line.split(/\s*[;\t|]\s*|\s{2,}|\s+[–—]\s+/).map(x=>x.trim()).filter(Boolean);if(parts.length<2){if(parts.length===1)out.push({name:"",funktion:parts[0],vakant:true});continue}
     let von=null,bis=null;const yi=parts.findIndex((x,i)=>i>0&&/^(\d{4})(\s*[-–]\s*(\d{4}|heute|offen)?)?$/i.test(x));
@@ -1057,7 +1058,7 @@ const A={
   hnew:d=>modal(`<h2>History-Eintrag</h2><div style="display:grid;gap:8px"><select id="ha" class="input">${["Funktion","Ehrung","Auftritt","Eintritt","Austritt","Notiz"].map(x=>`<option>${x}</option>`).join("")}</select><input id="hj" class="input" type="number" placeholder="Jahr" value="${new Date().getFullYear()}"><input id="hd" class="input" type="date"><textarea id="ht" class="input" placeholder="Text, z.B. Veteran SCV"></textarea></div><div class="row" style="margin-top:12px"><button class="btn primary" data-act="hsave" data-id="${d.id}">Speichern</button><button class="btn ghost" data-act="close">Abbrechen</button></div>`),
   hsave:d=>{const t=$("#ht").value.trim();if(!t)return toast("Bitte einen Text angeben");closeModal();rpc("chor_history_save",{p_code:S.code,p_id:null,p_person:d.id,p_jahr:+$("#hj").value||null,p_datum:$("#hd").value||null,p_art:$("#ha").value,p_text:t}).then(()=>{render();toast("Eintrag gespeichert")}).catch(e=>toast(e.message))},
   hdel:d=>{if(confirm("Eintrag löschen?"))rpc("chor_history_delete",{p_code:S.code,p_id:d.id}).then(()=>render()).catch(e=>toast(e.message))},
-  bnew:()=>bForm(null),bedit:d=>bForm(S.board.find(b=>b.id===d.id)),gtab:d=>{S.gTab=d.g;render()},bbulk:()=>bBulk(),
+  bnew:async()=>{await ehemLoad();bForm(null)},bedit:async d=>{await ehemLoad();bForm(S.board.find(b=>b.id===d.id))},gtab:d=>{S.gTab=d.g;render()},bbulk:async()=>{await ehemLoad();bBulk()},
   bkprev:()=>{const rows=parseBulk($("#bkt").value);$("#bkprev").innerHTML=rows.length?`<b>${rows.filter(r=>!r.vakant).length} Einträge:</b><ul class="blist">${rows.map(r=>`<li>${r.vakant?`<span class="muted">vakant</span>`:esc(r.name)} – ${esc(r.funktion)}${r.von?` · ${r.von}–${r.bis||"heute"}`:""} ${r.person?`<span class="chip g">✓ ${esc(full(r.person))}</span>`:r.vakant?"":`<span class="chip">als Name</span>`}</li>`).join("")}</ul>`:`<span class="muted">Keine Zeilen erkannt.</span>`},
   bksave:async()=>{const rows=parseBulk($("#bkt").value).filter(r=>!r.vakant),g=$("#bkg").value,v=+$("#bkv").value||new Date().getFullYear(),bi=+$("#bkb").value||null;if(!rows.length)return toast("Keine Einträge erkannt");
     closeModal();let n=0;try{for(const r of rows){await rpc("chor_board_save",{p_code:S.code,p_id:null,p_funktion:normF(r.funktion),p_person:r.person?r.person.id:null,p_name:r.person?"":r.name,p_von:r.von||v,p_bis:r.von?r.bis:bi,p_gremium:gremOf(r.funktion,g)});n++}
