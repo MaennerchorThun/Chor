@@ -306,7 +306,7 @@ const LOGO="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANAAAABpCAYAAABLYa3JAA
 /* ================= MCT Chor-App =================
    Für die aktiven Sänger des Männerchors Thun. Daten in Supabase (gleiche Datenbank wie die Herrenabend-App),
    Zugriff nur über geprüfte Funktionen mit dem persönlichen Code. Dateien im privaten Speicher «chor». */
-const APP_VERSION="2.9"; /* bei jeder Änderung erhöhen */
+const APP_VERSION="2.10"; /* bei jeder Änderung erhöhen */
 const SUPA={url:"https://tvygwnawrkxdhzghxgfv.supabase.co",key:"sb_publishable_yO40Pv19n6Wq0Wh769VZCg_q9BRTBvd"};
 const FILES_FN=SUPA.url+"/functions/v1/chor-files";
 const PUSH_FN=SUPA.url+"/functions/v1/chor-push",VAPID_PUBLIC="BNWkxTW3k3B7aTQY4r7nJ5VxkPL57BxlhuReulrRmmi8KPKTEZeYG52AFhSLN5o5Gs-Lhr5fqoMqBqqpBMyywEo";
@@ -508,8 +508,8 @@ function vMaterial(){
   if(!fs.length)h+=`<p class="muted">${S.files.length?"Nichts gefunden.":"Noch keine Dateien hochgeladen."}</p>`;
   return h}
 function upForm(){const lieder=[...new Set(S.files.map(f=>f.lied).filter(Boolean))].sort();
-  modal(`<h2>Dateien hochladen</h2><p class="small muted">PDF (Noten), MP3/M4A (Audio) oder MP4 (Video), max. 50 MB pro Datei. Du kannst viele Dateien auf einmal wählen – das Lied wird aus dem Dateinamen erkannt.</p><div style="display:grid;gap:8px">
-    <input id="uf" class="input" type="file" multiple accept=".pdf,.mp3,.m4a,.wav,.mp4,.mov,.jpg,.png,.doc,.docx,application/pdf,audio/*,video/*">
+  modal(`<h2>Dateien hochladen</h2><p class="small muted">PDF (Noten), MP3/M4A (Audio), MP4 (Video) oder beliebige andere Dateien wie .msb, .mscz, .musicxml, .mid (landen unter «Sonstiges»), max. 50 MB pro Datei. Du kannst viele Dateien auf einmal wählen – das Lied wird aus dem Dateinamen erkannt.</p><div style="display:grid;gap:8px">
+    <input id="uf" class="input" type="file" multiple>
     <input id="ul" class="input" list="liedlist" placeholder="Lied (leer = automatisch aus dem Dateinamen)"><datalist id="liedlist">${lieder.map(l=>`<option value="${esc(l)}">`).join("")}</datalist>
     <select id="us" class="input"><option value="">alle Stimmen</option>${STIMMEN.map(s=>`<option>${s}</option>`).join("")}</select>
     <input id="ut" class="input" placeholder="Titel (leer = Dateiname)"></div>
