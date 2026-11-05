@@ -306,7 +306,7 @@ const LOGO="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANAAAABpCAYAAABLYa3JAA
 /* ================= MCT Chor-App =================
    Für die aktiven Sänger des Männerchors Thun. Daten in Supabase (gleiche Datenbank wie die Herrenabend-App),
    Zugriff nur über geprüfte Funktionen mit dem persönlichen Code. Dateien im privaten Speicher «chor». */
-const APP_VERSION="2.7"; /* bei jeder Änderung erhöhen */
+const APP_VERSION="2.8"; /* bei jeder Änderung erhöhen */
 const SUPA={url:"https://tvygwnawrkxdhzghxgfv.supabase.co",key:"sb_publishable_yO40Pv19n6Wq0Wh769VZCg_q9BRTBvd"};
 const FILES_FN=SUPA.url+"/functions/v1/chor-files";
 const PUSH_FN=SUPA.url+"/functions/v1/chor-push",VAPID_PUBLIC="BNWkxTW3k3B7aTQY4r7nJ5VxkPL57BxlhuReulrRmmi8KPKTEZeYG52AFhSLN5o5Gs-Lhr5fqoMqBqqpBMyywEo";
@@ -1007,6 +1007,7 @@ const pushBox=()=>`<label class="row small"><input type="checkbox" id="dopush" c
 function vPush(){let h=`<button class="btn ghost sm" data-act="go" data-r="mehr" style="margin-bottom:10px">← Mehr</button><h1>Mitteilungen</h1>
   <p class="muted small">Push-Nachrichten aufs Handy: neue Termine, Absagen, Ankündigungen und Umfragen – auch wenn die App geschlossen ist.</p><div id="pushst" class="card"><p class="muted small" style="margin:0">wird geprüft …</p></div>`;
   if(isIOS&&!isStandalone())h+=`<div class="note"><b>iPhone/iPad:</b> Push-Nachrichten gehen nur, wenn die Chor-App auf dem Home-Bildschirm ist (ab iOS 16.4): In Safari auf <b>Teilen</b> → <b>«Zum Home-Bildschirm»</b>, dann die App über das neue Symbol öffnen und hier «Mitteilungen aktivieren» tippen.</div>`;
+  h+=`<div class="note"><b>Test kommt nicht an?</b> Meist blockiert das Handy: <b>Fokus / «Nicht stören»</b> (z.B. «Zeit für mich», «Schlafen») ausschalten oder die Chor-App dort erlauben. Ausserdem prüfen: Einstellungen → Mitteilungen → Chor-App → «Mitteilungen erlauben» eingeschaltet${isIOS?"":", am Computer die Systemmitteilungen für den Browser"}.</div>`;
   if(isL())h+=`<div class="card"><h3>Push-Nachricht senden</h3><p class="small muted">Geht an alle aktiven Sänger, die Mitteilungen aktiviert haben. Für Sänger ohne App: Text kopieren und in Webling als SMS versenden.</p>
     <div style="display:grid;gap:6px"><input id="pt" class="input" maxlength="80" placeholder="Titel, z.B. Probe fällt aus"><textarea id="pb" class="input" rows="3" maxlength="240" placeholder="Text, z.B. Die Probe vom Donnerstag fällt wegen … aus."></textarea>
     <select id="pv" class="input"><option value="">an alle Stimmen</option>${STIMMEN.map(x=>`<option>${x}</option>`).join("")}</select></div>
