@@ -287,6 +287,9 @@ a.sp{color:inherit;text-decoration:none}a.sp:hover .grow,a.card.link:hover b{col
   #printroot .li{padding:4px 0}#printroot .av{width:24px;height:24px;font-size:9pt}#printroot .t td,#printroot .t th{padding:3px 6px}
   #printroot .fotohead,#printroot .hero{display:none}}
 html.vet #hdrsub{color:var(--brand);font-weight:700}
+#hdrsub.hdrsw{cursor:pointer;color:var(--brand);font-weight:600;text-decoration:underline;text-underline-offset:2px}
+@media (max-width:700px){#chorsw{display:none!important}}
+.hdr-brand{flex:1 1 auto}.hshort{display:none}@media (max-width:420px){.hlong{display:none}.hshort{display:inline}}.hdr-brand>div{min-width:0;flex:1 1 auto}
 </style>
 </head>
 <body>
@@ -296,7 +299,7 @@ html.vet #hdrsub{color:var(--brand);font-weight:700}
     <div><b id="hdrt">Chor-App</b><small id="hdrsub">Männerchor Thun · Aktive Sänger</small></div>
   </div>
   <button class="btn sm noprint" id="chorsw" data-act="chorsw" hidden style="white-space:nowrap;flex:none"></button>
-  <button class="btn sm noprint" data-act="toha" title="zur Herrenabend-App" style="white-space:nowrap;flex:none">Herrenabend ›</button>
+  <button class="btn sm noprint" data-act="toha" title="zur Herrenabend-App" style="white-space:nowrap;flex:none"><span class="hlong">Herrenabend</span><span class="hshort">🎩</span> ›</button>
 </header>
 <main id="app"></main>
 <nav class="tabs" id="tabs" hidden></nav>
@@ -308,7 +311,7 @@ const LOGO="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANAAAABpCAYAAABLYa3JAA
 /* ================= MCT Chor-App =================
    Für die aktiven Sänger des Männerchors Thun. Daten in Supabase (gleiche Datenbank wie die Herrenabend-App),
    Zugriff nur über geprüfte Funktionen mit dem persönlichen Code. Dateien im privaten Speicher «chor». */
-const APP_VERSION="3.4"; /* bei jeder Änderung erhöhen */
+const APP_VERSION="3.5"; /* bei jeder Änderung erhöhen */
 const SUPA={url:"https://tvygwnawrkxdhzghxgfv.supabase.co",key:"sb_publishable_yO40Pv19n6Wq0Wh769VZCg_q9BRTBvd"};
 const FILES_FN=SUPA.url+"/functions/v1/chor-files";
 const PUSH_FN=SUPA.url+"/functions/v1/chor-push",VAPID_PUBLIC="BNWkxTW3k3B7aTQY4r7nJ5VxkPL57BxlhuReulrRmmi8KPKTEZeYG52AFhSLN5o5Gs-Lhr5fqoMqBqqpBMyywEo";
@@ -331,8 +334,10 @@ const isVet=()=>S.chor==="vet",chorName=()=>isVet()?"Veteranen":"Männerchor Thu
 const ccode=()=>S.code?(isVet()?"vet:"+S.code:S.code):S.code;
 const VET_ORT="FrachtRaum, Seestrasse 14, 3600 Thun";
 function chorUrl(path){return "./?chor="+(isVet()?"vet":"mc")+(path||"").replace(/^\.\//,"")}
-function hdrChor(){const t=$("#hdrsub"),b=$("#chorsw");if(t)t.textContent=isVet()?"Veteranen · Männerchor Thun":"Männerchor Thun · Aktive Sänger";
-  if(b){const both=!!(S.chors&&S.chors.mc&&S.chors.vet);b.hidden=!both;b.textContent=isVet()?"⇄ Männerchor":"⇄ Veteranen";b.title=isVet()?"zum Männerchor wechseln":"zu den Veteranen wechseln"}
+function hdrChor(){const t=$("#hdrsub"),b=$("#chorsw"),both=!!(S.chors&&S.chors.mc&&S.chors.vet);
+  if(t){if(both){t.textContent=(isVet()?"Veteranen":"Männerchor")+" ⇄";t.dataset.act="chorsw";t.classList.add("hdrsw");t.title=isVet()?"zum Männerchor wechseln":"zu den Veteranen wechseln"}
+    else{t.textContent=isVet()?"Veteranen · Männerchor Thun":"Männerchor Thun · Aktive Sänger";delete t.dataset.act;t.classList.remove("hdrsw")}}
+  if(b){b.hidden=!both;b.textContent=isVet()?"⇄ Männerchor":"⇄ Veteranen";b.title=isVet()?"zum Männerchor wechseln":"zu den Veteranen wechseln"}
   document.documentElement.classList.toggle("vet",isVet())}
 const D=x=>new Date(x);
 const fDate=x=>D(x).toLocaleDateString("de-CH",{weekday:"short",day:"numeric",month:"long"});
