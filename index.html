@@ -308,7 +308,7 @@ const LOGO="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANAAAABpCAYAAABLYa3JAA
 /* ================= MCT Chor-App =================
    Für die aktiven Sänger des Männerchors Thun. Daten in Supabase (gleiche Datenbank wie die Herrenabend-App),
    Zugriff nur über geprüfte Funktionen mit dem persönlichen Code. Dateien im privaten Speicher «chor». */
-const APP_VERSION="3.2"; /* bei jeder Änderung erhöhen */
+const APP_VERSION="3.3"; /* bei jeder Änderung erhöhen */
 const SUPA={url:"https://tvygwnawrkxdhzghxgfv.supabase.co",key:"sb_publishable_yO40Pv19n6Wq0Wh769VZCg_q9BRTBvd"};
 const FILES_FN=SUPA.url+"/functions/v1/chor-files";
 const PUSH_FN=SUPA.url+"/functions/v1/chor-push",VAPID_PUBLIC="BNWkxTW3k3B7aTQY4r7nJ5VxkPL57BxlhuReulrRmmi8KPKTEZeYG52AFhSLN5o5Gs-Lhr5fqoMqBqqpBMyywEo";
@@ -330,7 +330,7 @@ const isN=()=>isV()||!!(S.me&&S.me.noten); /* darf Noten & Audio hochladen */
 const isVet=()=>S.chor==="vet",chorName=()=>isVet()?"Veteranenchor":"Männerchor Thun",VS=()=>isVet()?"Obmannschaft":"Vorstand";
 const ccode=()=>S.code?(isVet()?"vet:"+S.code:S.code):S.code;
 const VET_ORT="FrachtRaum, Seestrasse 14, 3600 Thun";
-function chorUrl(path){return isVet()?"./?chor=vet"+(path||"").replace(/^\.\//,""):(path||"./")}
+function chorUrl(path){return "./?chor="+(isVet()?"vet":"mc")+(path||"").replace(/^\.\//,"")}
 function hdrChor(){const t=$("#hdrsub"),b=$("#chorsw");if(t)t.textContent=isVet()?"Veteranenchor · Männerchor Thun":"Männerchor Thun · Aktive Sänger";
   if(b){const both=!!(S.chors&&S.chors.mc&&S.chors.vet);b.hidden=!both;b.textContent=isVet()?"⇄ Männerchor":"⇄ Veteranen";b.title=isVet()?"zum Männerchor wechseln":"zum Veteranenchor wechseln"}
   document.documentElement.classList.toggle("vet",isVet())}
@@ -993,7 +993,7 @@ function renderTabs(){const r=route()[0],cur={termin:"termine",mitglieder:"mehr"
 const route=()=>(location.hash.replace(/^#\/?/,"")||"start").split("/");
 function go(r){location.hash="#/"+r}
 function vChooser(){$("#tabs").hidden=true;$("#app").innerHTML=`<div class="chooser"><img src="${LOGO}" alt="" style="height:60px;margin:0 auto"><h2 style="text-align:center;margin:0">Grüessech ${esc(S.me.vorname)}</h2><p class="muted" style="text-align:center;margin:0">Welche App möchtest du öffnen?</p>
-  <button data-act="pick" data-a="chor"><span class="ic">🎵</span><span><b>Chor-App</b><span class="small muted">Proben, Termine, Noten, Chat</span></span></button>
+  <button data-act="pick" data-a="chor"><span class="ic">${isVet()?"🎖️":"🎵"}</span><span><b>Chor-App${isVet()?" Veteranenchor":""}</b><span class="small muted">Proben, Termine, Noten, Chat</span></span></button>
   <button data-act="pick" data-a="ha"><span class="ic">🎩</span><span><b>Herrenabend-App</b><span class="small muted">195. Herrenabend, 12. Dezember 2026</span></span></button>
   <label class="row small muted" style="justify-content:center"><input type="checkbox" id="nomore"> nicht mehr fragen (direkt zur Chor-App)</label><p class="muted" style="text-align:center;font-size:12px;margin:10px 0 0">Chor-App Version ${APP_VERSION}</p></div>`}
 function render(){if(!S.me){vLogin();return}
@@ -1044,8 +1044,19 @@ async function login(code,want){S.code=String(code||"").trim().toUpperCase().rep
   $("#app").innerHTML=`<p class="muted" style="text-align:center;margin-top:60px">Lade …</p>`;
   try{S.chor="mc";S.chors=await rpc("chor_contexts",{p_code:S.code});
     if(!S.chors.mc&&!S.chors.vet)throw new Error("Die Chor-App ist für die aktiven Sänger des Männerchors und des Veteranenchors.");
-    want=want||store.get("chor_ctx");S.chor=(want==="vet"&&S.chors.vet)||!S.chors.mc?"vet":"mc";
-    await load();store.set("chor_code",S.code);store.set("chor_ctx",S.chor);try{const u=new URL(location.href);u.searchParams.set("c",S.code);if(isVet())u.searchParams.set("chor","vet");else u.searchParams.delete("chor");if(S.me&&S.me.vorname)u.searchParams.set("n",S.me.vorname);history.replaceState(null,"",u.toString())}catch(e){}render();startPoll()}
+    store.set("chor_code",S.code);let sel=null;try{sel=sessionStorage.getItem("chor_sel")}catch(e){}
+    want=want==="vet"||want==="mc"?want:sel;
+    if(S.chors.mc&&S.chors.vet&&!want)return vChorWahl();   /* in beiden Chören: beim Öffnen fragen */
+    S.chor=S.chors.mc&&S.chors.vet?want:S.chors.vet?"vet":"mc";await enterChor()}
+  catch(e){S.me=null;store.set("chor_code",null);vLogin(/Code unbekannt/.test(e.message)?"Code unbekannt – bitte prüfen.":e.message)}}
+/* Auswahl für Sänger in beiden Chören */
+function vChorWahl(){$("#tabs").hidden=true;hdrChor();const b=(c,ic,t,d)=>`<button class="tile" data-act="chorpick" data-c="${c}" style="width:100%;margin:0 0 10px;text-align:left"><span class="ic">${ic}</span><b>${t}</b><span>${d}</span></button>`;
+  $("#app").innerHTML=`<div class="card" style="max-width:420px;margin:30px auto;text-align:center"><img src="${LOGO}" alt="Männerchor Thun" style="height:64px"><h1 style="margin:12px 0 4px">Grüessech</h1><p class="muted">Du singst in beiden Chören. Was möchtest du öffnen?</p>
+    <div style="margin-top:14px">${b("mc","🎶","Männerchor Thun","Proben am Donnerstag")}${b("vet","🎖️","Veteranenchor","Proben am Montag im FrachtRaum")}<button class="tile" data-act="pick" data-a="ha" style="width:100%;margin:0 0 10px;text-align:left"><span class="ic">🎩</span><b>Herrenabend-App</b><span>195. Herrenabend, 12. Dezember 2026</span></button></div>
+    <p class="small muted" style="margin:6px 0 0">Wechseln geht jederzeit oben mit «⇄».</p></div>`}
+async function enterChor(){try{sessionStorage.setItem("chor_sel",S.chor)}catch(e){}store.set("chor_ctx",S.chor);
+  $("#app").innerHTML=`<p class="muted" style="text-align:center;margin-top:60px">Lade ${chorName()} …</p>`;
+  try{await load();try{const u=new URL(location.href);u.searchParams.set("c",S.code);u.searchParams.delete("chor");if(S.me&&S.me.vorname)u.searchParams.set("n",S.me.vorname);history.replaceState(null,"",u.toString())}catch(e){}render();startPoll()}
   catch(e){S.me=null;store.set("chor_code",null);vLogin(/Code unbekannt/.test(e.message)?"Code unbekannt – bitte prüfen.":e.message)}}
 let pollT=null;function startPoll(){clearInterval(pollT);pollT=setInterval(async()=>{if(document.hidden||!S.me)return;
   try{const np=await rpc("chor_poll",{p_code:S.code,p_after:S.lastPost});if(np&&np.length){const known=new Set(S.posts.map(p=>p.id));const add=np.filter(p=>!known.has(p.id));if(!add.length)return;
@@ -1086,10 +1097,11 @@ const A={
   icscopy:()=>{const u=`${ICS_FN}?t=${S.icsToken}`;(navigator.clipboard?.writeText(u)||Promise.reject()).then(()=>toast("Link kopiert"),()=>toast(u))},
   icsneu:()=>{if(confirm("Neuen Link erzeugen? Bestehende Abos funktionieren dann nicht mehr und müssen neu eingerichtet werden."))loadIcs(true).then(()=>toast("Neuer Link erzeugt"))},
   login:()=>login($("#code").value),
-  chorsw:async()=>{if(!(S.chors&&S.chors.mc&&S.chors.vet))return;S.chor=isVet()?"mc":"vet";store.set("chor_ctx",S.chor);S.urls={};S.gTab=null;S.lastPost=null;
-    try{const u=new URL(location.href);if(isVet())u.searchParams.set("chor","vet");else u.searchParams.delete("chor");u.hash="#/start";history.replaceState(null,"",u.toString())}catch(e){}
+  chorpick:d=>{try{sessionStorage.setItem("chor_pick","1")}catch(e){}S.chor=d.c==="vet"?"vet":"mc";enterChor()},
+  chorsw:async()=>{if(!(S.chors&&S.chors.mc&&S.chors.vet))return;S.chor=isVet()?"mc":"vet";store.set("chor_ctx",S.chor);try{sessionStorage.setItem("chor_sel",S.chor)}catch(e){}S.urls={};S.gTab=null;S.lastPost=null;
+    try{const u=new URL(location.href);u.searchParams.delete("chor");u.hash="#/start";history.replaceState(null,"",u.toString())}catch(e){}
     $("#app").innerHTML=`<p class="muted" style="text-align:center;margin-top:60px">Lade ${chorName()} …</p>`;try{await load();render();toast(chorName())}catch(e){toast(e.message);S.chor=isVet()?"mc":"vet";hdrChor()}},
-  logout:()=>{store.set("chor_code",null);store.set("chor_ctx",null);S.chors=null;S.chor="mc";hdrChor();S.me=null;S.code=null;clearInterval(pollT);location.hash="";vLogin()},
+  logout:()=>{store.set("chor_code",null);store.set("chor_ctx",null);try{sessionStorage.removeItem("chor_sel")}catch(e){}S.chors=null;S.chor="mc";hdrChor();S.me=null;S.code=null;clearInterval(pollT);location.hash="";vLogin()},
   tfilter:d=>{S.tFilter=d.k;render()},tpast:d=>{S.tPast=d.v==="1";render()},mfilter:d=>{S.mFilter=d.k;render()},
   rsvp:d=>{const e=S.events.find(x=>x.id===d.id);if(e&&e.my===d.s)return call("chor_set_attendance",{p_event:d.id,p_status:null,p_grund:null},"Rückmeldung entfernt").catch(()=>{});
     if(d.s==="nein")return modal(`<h2>Abmelden</h2><p class="small muted">Grund (optional, sieht nur der Vorstand):</p><input id="grund" class="input" placeholder="z.B. Ferien, krank, Geschäft"><p class="small" style="margin:8px 0 0">Länger krank oder in den Ferien? <a href="#/abwesenheit" data-act="go" data-r="abwesenheit">Abwesenheit melden</a> – dann gilt es für alle Termine im Zeitraum.</p><div class="row" style="margin-top:12px"><button class="btn primary" data-act="rsvpno" data-id="${d.id}">Abmelden</button><button class="btn ghost" data-act="close">Abbrechen</button></div>`);
