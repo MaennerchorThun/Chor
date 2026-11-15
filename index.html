@@ -6,7 +6,8 @@
 <title>Chor-App MCT</title>
 <meta name="theme-color" content="#de1034">
 <meta name="color-scheme" content="light only">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="https://maennerchorthun.github.io/Chor/apple-touch-icon.png">
+<link rel="apple-touch-icon-precomposed" sizes="180x180" href="https://maennerchorthun.github.io/Chor/apple-touch-icon.png">
 <script>/* iOS: ohne Manifest übernimmt «Zum Home-Bildschirm» die aktuelle Adresse samt persönlichem Code (?c=…&n=…). Mit Manifest schneidet iOS sie ab. */
 (function(){var ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
 if(!ios){var l=document.createElement("link");l.rel="manifest";l.href="manifest.webmanifest";document.head.appendChild(l)}})();</script>
@@ -311,7 +312,7 @@ const LOGO="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANAAAABpCAYAAABLYa3JAA
 /* ================= MCT Chor-App =================
    Für die aktiven Sänger des Männerchors Thun. Daten in Supabase (gleiche Datenbank wie die Herrenabend-App),
    Zugriff nur über geprüfte Funktionen mit dem persönlichen Code. Dateien im privaten Speicher «chor». */
-const APP_VERSION="3.5"; /* bei jeder Änderung erhöhen */
+const APP_VERSION="3.6"; /* bei jeder Änderung erhöhen */
 const SUPA={url:"https://tvygwnawrkxdhzghxgfv.supabase.co",key:"sb_publishable_yO40Pv19n6Wq0Wh769VZCg_q9BRTBvd"};
 const FILES_FN=SUPA.url+"/functions/v1/chor-files";
 const PUSH_FN=SUPA.url+"/functions/v1/chor-push",VAPID_PUBLIC="BNWkxTW3k3B7aTQY4r7nJ5VxkPL57BxlhuReulrRmmi8KPKTEZeYG52AFhSLN5o5Gs-Lhr5fqoMqBqqpBMyywEo";
