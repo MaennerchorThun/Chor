@@ -312,7 +312,7 @@ const LOGO="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANAAAABpCAYAAABLYa3JAA
 /* ================= MCT Chor-App =================
    Für die aktiven Sänger des Männerchors Thun. Daten in Supabase (gleiche Datenbank wie die Herrenabend-App),
    Zugriff nur über geprüfte Funktionen mit dem persönlichen Code. Dateien im privaten Speicher «chor». */
-const APP_VERSION="3.6"; /* bei jeder Änderung erhöhen */
+const APP_VERSION="3.7"; /* bei jeder Änderung erhöhen */
 const SUPA={url:"https://tvygwnawrkxdhzghxgfv.supabase.co",key:"sb_publishable_yO40Pv19n6Wq0Wh769VZCg_q9BRTBvd"};
 const FILES_FN=SUPA.url+"/functions/v1/chor-files";
 const PUSH_FN=SUPA.url+"/functions/v1/chor-push",VAPID_PUBLIC="BNWkxTW3k3B7aTQY4r7nJ5VxkPL57BxlhuReulrRmmi8KPKTEZeYG52AFhSLN5o5Gs-Lhr5fqoMqBqqpBMyywEo";
@@ -1185,6 +1185,16 @@ function versionCheck(){const url=location.pathname+(location.pathname.endsWith(
 setTimeout(versionCheck,2500);setInterval(()=>{if(!document.hidden)versionCheck()},10*60*1000);
 (function init(){try{if(new URLSearchParams(location.search).get("pick")==="1")sessionStorage.setItem("chor_pick","1")}catch(e){}const sp=new URLSearchParams(location.search),q=sp.get("c");const c=q||store.get("chor_code");if(c)login(c,sp.get("chor")||null);else vLogin()})();
 
+</script>
+<script>/* Hinweis für iPhone/iPad in Firefox, Chrome, Edge, Opera: App-Symbol und Push nur via Safari */
+(function(){try{var ua=navigator.userAgent||"",ios=/iPad|iPhone|iPod/.test(ua)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+  var other=/FxiOS|CriOS|EdgiOS|OPiOS|GSA\//.test(ua),standalone=window.navigator.standalone===true||matchMedia("(display-mode: standalone)").matches;
+  if(!ios||!other||standalone)return;try{if(localStorage.getItem("safari_hint")==="0")return}catch(e){}
+  var d=document.createElement("div");d.setAttribute("role","note");
+  d.style.cssText="position:fixed;left:10px;right:10px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:9999;background:#1f1b18;color:#fff;border-radius:12px;padding:12px 40px 12px 14px;font:14px/1.4 -apple-system,system-ui,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.25)";
+  d.innerHTML='<b>Tipp fürs iPhone:</b> Für das App-Symbol mit MCT-Logo und für Push-Nachrichten diesen Link bitte in <b>Safari</b> öffnen und dort über <b>Teilen → «Zum Home-Bildschirm»</b> hinzufügen.<button aria-label="Hinweis schliessen" style="position:absolute;top:6px;right:8px;background:none;border:0;color:#fff;font-size:22px;line-height:1;padding:4px;cursor:pointer">×</button>';
+  d.querySelector("button").onclick=function(){d.remove();try{localStorage.setItem("safari_hint","0")}catch(e){}};
+  var add=function(){document.body.appendChild(d)};if(document.body)add();else document.addEventListener("DOMContentLoaded",add)}catch(e){}})();
 </script>
 </body>
 </html>
