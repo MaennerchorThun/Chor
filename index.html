@@ -316,7 +316,7 @@ const LOGO="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANAAAABpCAYAAABLYa3JAA
 /* ================= MCT Chor-App =================
    Für die aktiven Sänger des Männerchors Thun. Daten in Supabase (gleiche Datenbank wie die Herrenabend-App),
    Zugriff nur über geprüfte Funktionen mit dem persönlichen Code. Dateien im privaten Speicher «chor». */
-const APP_VERSION="3.13"; /* bei jeder Änderung erhöhen */
+const APP_VERSION="3.14"; /* bei jeder Änderung erhöhen */
 const SUPA={url:"https://tvygwnawrkxdhzghxgfv.supabase.co",key:"sb_publishable_yO40Pv19n6Wq0Wh769VZCg_q9BRTBvd"};
 const FILES_FN=SUPA.url+"/functions/v1/chor-files";
 const PUSH_FN=SUPA.url+"/functions/v1/chor-push",VAPID_PUBLIC="BNWkxTW3k3B7aTQY4r7nJ5VxkPL57BxlhuReulrRmmi8KPKTEZeYG52AFhSLN5o5Gs-Lhr5fqoMqBqqpBMyywEo";
@@ -575,7 +575,7 @@ function vMaterial(){
   const groups=new Map();for(const x of fs){const k=x.lied||"Allgemein";if(!groups.has(k))groups.set(k,[]);groups.get(k).push(x)}
   for(const[l,xs]of[...groups].sort((a,b)=>a[0].localeCompare(b[0])))h+=`<div class="card"><div class="row between"><h3 style="margin:0">${esc(l)}</h3>${S.me.stimme&&S.files.some(x=>(x.lied||"Allgemein")===l&&isMine(x))?`<button class="btn sm ghost" data-act="dllied" data-l="${esc(l)}" title="Noten und Aufnahmen meiner Stimme für dieses Lied">⬇ meine Stimme</button>`:""}</div><div class="list">${xs.map(x=>`<div class="li" style="cursor:default"><div class="av">${(ART[x.art]||ART.sonstiges).ic}</div><div class="grow"><div class="nm">${esc(x.titel)}</div><div class="sub">${(ART[x.art]||ART.sonstiges).l}${x.stimme?" · "+esc(x.stimme):""}${x.groesse?" · "+fSize(x.groesse):""}</div>
     ${x.art==="audio"&&S.play===x.id&&S.urls[x.path]?`<audio controls autoplay src="${S.urls[x.path]}" style="width:100%;margin-top:6px"></audio>`:""}${x.art==="video"&&S.play===x.id&&S.urls[x.path]?`<video controls autoplay src="${S.urls[x.path]}" style="width:100%;margin-top:6px;border-radius:8px"></video>`:""}</div>
-    <div class="row" style="flex-wrap:nowrap">${x.art==="audio"||x.art==="video"?`<button class="btn sm" data-act="play" data-id="${x.id}">▶</button>`:""}<button class="btn sm" data-act="open" data-id="${x.id}">Öffnen</button><button class="btn sm" data-act="dlone" data-id="${x.id}" aria-label="herunterladen" title="herunterladen">⬇</button>${isV()||(isN()&&x.own)?`<button class="btn sm ghost" data-act="fdel" data-id="${x.id}" aria-label="löschen">✕</button>`:""}</div></div>`).join("")}</div></div>`;
+    <div class="row" style="flex-wrap:nowrap">${x.art==="audio"||x.art==="video"?`<button class="btn sm" data-act="play" data-id="${x.id}">▶</button>`:""}<button class="btn sm" data-act="open" data-id="${x.id}">Öffnen</button><button class="btn sm" data-act="dlone" data-id="${x.id}" aria-label="herunterladen" title="herunterladen">⬇</button>${isN()?`<button class="btn sm ghost" data-act="fedit" data-id="${x.id}" aria-label="bearbeiten" title="Lied, Stimme, Art bearbeiten">✎</button>`:""}${isN()?`<button class="btn sm ghost" data-act="fdel" data-id="${x.id}" aria-label="löschen">✕</button>`:""}</div></div>`).join("")}</div></div>`;
   if(!fs.length)h+=`<p class="muted">${S.files.length?"Nichts gefunden.":"Noch keine Dateien hochgeladen."}</p>`;
   return h}
 function upForm(){const lieder=[...new Set(S.files.map(f=>f.lied).filter(Boolean))].sort();
@@ -1207,7 +1207,16 @@ const A={
   upnew:()=>upForm(),upload:()=>doUpload(),
   open:async d=>{const x=S.files.find(f=>f.id===d.id);const w=window.open("","_blank");try{const u=await urlFor(x);if(w)w.location=u;else location.href=u}catch(e){if(w)w.close();toast(e.message)}},
   play:async d=>{const x=S.files.find(f=>f.id===d.id);try{await urlFor(x);S.play=S.play===x.id?null:x.id;render()}catch(e){toast(e.message)}},
-  fdel:d=>{if(!confirm("Datei löschen?"))return;filesFn({action:"delete",id:d.id}).then(async()=>{await load();render();toast("Gelöscht")}).catch(e=>toast(e.message))},
+  fedit:d=>{const x=S.files.find(f=>f.id===d.id);if(!x)return;const lieder=[...new Set(S.files.map(f=>f.lied).filter(Boolean))].sort();
+    const SO=["1. Tenor","2. Tenor","Tenöre","1. Bass","2. Bass","Bässe"];
+    modal(`<h2>Datei bearbeiten</h2><p class="small muted" style="margin:-4px 0 10px">${esc(x.titel)}${x.groesse?" · "+fSize(x.groesse):""}</p><div style="display:grid;gap:8px">
+      <label class="small muted">Titel</label><input id="fet" class="input" value="${esc(x.titel)}">
+      <label class="small muted">Lied</label><input id="fel" class="input" list="felist" value="${esc(x.lied||"")}" placeholder="z.B. Bärnbiet"><datalist id="felist">${lieder.map(l=>`<option value="${esc(l)}">`).join("")}</datalist>
+      <label class="small muted">Stimme</label><select id="fes" class="input"><option value="">alle Stimmen</option>${SO.map(v=>`<option ${x.stimme===v?"selected":""}>${v}</option>`).join("")}</select>
+      <label class="small muted">Art</label><select id="fea" class="input">${Object.entries(ART).map(([k,v])=>`<option value="${k}" ${x.art===k?"selected":""}>${v.ic} ${v.l}</option>`).join("")}</select></div>
+      <div class="row" style="margin-top:12px"><button class="btn primary" data-act="fesave" data-id="${x.id}">Speichern</button><button class="btn ghost" data-act="fdel" data-id="${x.id}">Löschen</button><button class="btn ghost" data-act="close">Abbrechen</button></div>`)},
+  fesave:d=>{const v=id=>$(id).value;const args={p_id:d.id,p_titel:v("#fet"),p_lied:v("#fel"),p_art:v("#fea"),p_stimme:v("#fes")};closeModal();call("chor_file_update",args,"Gespeichert").catch(()=>{})},
+  fdel:d=>{closeModal();if(!confirm("Datei löschen?"))return;filesFn({action:"delete",id:d.id}).then(async()=>{await load();render();toast("Gelöscht")}).catch(e=>toast(e.message))},
   stedit:d=>stForm(d.id),
   stsave:d=>{const g=k=>$("#st_"+k);const data={};for(const k of["strasse","plz","ort","telefon","email","beruf","stimme","geburtsdatum","eintritt","austritt","ehrungen","notizen"])if(g(k))data[k]=g(k).value.trim();
     if(g("aktiv"))data.aktiv=g("aktiv").checked;if(g("ehemalig")){data.ehemalig=g("ehemalig").checked;if(data.ehemalig)data.aktiv=false}if(g("rolle"))data.rolle=g("rolle").checked?"vorstand":"saenger";closeModal();
