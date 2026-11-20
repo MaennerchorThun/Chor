@@ -1816,7 +1816,7 @@ document.addEventListener("change",e=>{
 /* ================= Live-Daten (Supabase) =================
    Zugriff nur über geprüfte Funktionen mit dem persönlichen Code – kein direkter Tabellenzugriff.
    Zum Vorführen mit Demo-Daten: URL-Zusatz ?demo=1 */
-const APP_VERSION="4.6"; /* bei jeder Änderung erhöhen */
+const APP_VERSION="4.7"; /* bei jeder Änderung erhöhen */
 const SUPA={url:"https://tvygwnawrkxdhzghxgfv.supabase.co",key:"sb_publishable_yO40Pv19n6Wq0Wh769VZCg_q9BRTBvd"};
 const LIVE=!VORAB&&!!SUPA.url&&new URLSearchParams(location.search).get("demo")!=="1";
 async function rpc(fn,args={}){
@@ -1942,7 +1942,7 @@ if(LIVE){const fb=A.sendfb;Object.assign(A,LIVEA);
 
 /* ================= OK-Zugang aus der Vorabversion / Event-Vorschau ================= */
 /* Aktive Sänger: beim Öffnen fragen, ob Chor-App oder Herrenabend-App */
-const chorUrl=()=>`${location.origin}/Chor/?${S.code?"c="+encodeURIComponent(S.code)+"&":""}${S.vname?"n="+encodeURIComponent(S.vname)+"&":""}pick=1`;
+const chorUrl=()=>`https://chor.xn--mnnerchorthun-bfb.ch/?${S.code?"c="+encodeURIComponent(S.code)+"&":""}${S.vname?"n="+encodeURIComponent(S.vname)+"&":""}pick=1`;
 function askApp(){if(!S.code||askApp.done)return;askApp.done=true;let skip=new URLSearchParams(location.search).get("pick")==="1";
   try{if(skip)sessionStorage.setItem("ha_pick","1");skip=skip||sessionStorage.getItem("ha_pick")==="1"||localStorage.getItem("ha_nopick")==="1"}catch(e){}
   rpc("chor_is_aktiv",{p_code:S.code}).then(ok=>{S.chorAktiv=!!ok;const b=$("#tochor");if(b)b.hidden=!ok;if(!ok||skip)return;if(route()==="mehr")render();
