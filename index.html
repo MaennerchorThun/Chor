@@ -291,6 +291,10 @@ html.vet #hdrsub{color:var(--brand);font-weight:700}
 #hdrsub.hdrsw{cursor:pointer;color:var(--brand);font-weight:600;text-decoration:underline;text-underline-offset:2px}
 @media (max-width:700px){#chorsw{display:none!important}}
 .hdr-brand{flex:1 1 auto}.hshort{display:none}@media (max-width:420px){.hlong{display:none}.hshort{display:inline}}.hdr-brand>div{min-width:0;flex:1 1 auto}
+#plbar{position:fixed;left:8px;right:8px;bottom:calc(64px + env(safe-area-inset-bottom));z-index:30;background:#1f1b18;color:#fff;border-radius:14px;display:flex;align-items:center;gap:4px;padding:6px 8px;box-shadow:0 6px 24px rgba(0,0,0,.25)}
+#plbar .plb{background:none;border:0;color:#fff;font-size:18px;padding:6px 7px;cursor:pointer;flex:none}#plbar .plb.main{font-size:22px}
+#plbar .plt{flex:1;min-width:0;cursor:pointer;line-height:1.2}#plbar .plt b,#plbar .plt span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#plbar .plt span{font-size:12px;opacity:.75}
+body.hasplbar #app{padding-bottom:140px}
 </style>
 </head>
 <body>
@@ -312,7 +316,7 @@ const LOGO="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANAAAABpCAYAAABLYa3JAA
 /* ================= MCT Chor-App =================
    Für die aktiven Sänger des Männerchors Thun. Daten in Supabase (gleiche Datenbank wie die Herrenabend-App),
    Zugriff nur über geprüfte Funktionen mit dem persönlichen Code. Dateien im privaten Speicher «chor». */
-const APP_VERSION="3.12"; /* bei jeder Änderung erhöhen */
+const APP_VERSION="3.13"; /* bei jeder Änderung erhöhen */
 const SUPA={url:"https://tvygwnawrkxdhzghxgfv.supabase.co",key:"sb_publishable_yO40Pv19n6Wq0Wh769VZCg_q9BRTBvd"};
 const FILES_FN=SUPA.url+"/functions/v1/chor-files";
 const PUSH_FN=SUPA.url+"/functions/v1/chor-push",VAPID_PUBLIC="BNWkxTW3k3B7aTQY4r7nJ5VxkPL57BxlhuReulrRmmi8KPKTEZeYG52AFhSLN5o5Gs-Lhr5fqoMqBqqpBMyywEo";
@@ -490,6 +494,56 @@ function vChat(){S.unread=0;renderTabs();
   h+=`</div><div class="chatin"><textarea id="msg" class="input" rows="2" placeholder="Nachricht an alle Aktiven …"></textarea><div class="row between" style="margin-top:6px">${isV()?`<label class="row small"><input type="checkbox" id="asinfo"> als Ankündigung</label>`:"<span></span>"}<button class="btn primary sm" data-act="send">Senden</button></div></div>`;
   setTimeout(()=>{const c=$("#chatlist");if(c)c.lastElementChild?.scrollIntoView({block:"end"})},30);
   return h}
+
+/* ---------- Übungsplayer: Aufnahmen meiner Stimme nacheinander oder einzeln wiederholt (Sperrbildschirm, CarPlay, Bluetooth) ---------- */
+const PL={list:[],i:-1,rep:"all",sel:null,year:"alle",scope:"mine"};
+try{const o=JSON.parse(localStorage.getItem("chor_player")||"{}");if(o.rep)PL.rep=o.rep;if(o.year)PL.year=o.year;if(o.scope)PL.scope=o.scope;if(Array.isArray(o.sel))PL.sel=new Set(o.sel)}catch(e){}
+const plSave=()=>{try{localStorage.setItem("chor_player",JSON.stringify({rep:PL.rep,year:PL.year,scope:PL.scope,sel:PL.sel?[...PL.sel]:null}))}catch(e){}};
+const yearOf=x=>x.created_at?new Date(x.created_at).getFullYear():null;
+const STRANK=x=>{const my=S.me.stimme||"";return x.stimme===my?0:x.stimme&&(x.stimme==="Tenöre"||x.stimme==="Bässe")?1:x.stimme?2:3};
+function plCandidates(){return S.files.filter(x=>x.art==="audio"&&(PL.scope==="alle"||isMine(x))&&(PL.year==="alle"||String(yearOf(x))===PL.year))
+  .sort((a,b)=>(a.lied||"").localeCompare(b.lied||"")||STRANK(a)-STRANK(b)||a.titel.localeCompare(b.titel))}
+function plAudio(){let a=document.getElementById("plaudio");if(a)return a;a=document.createElement("audio");a.id="plaudio";a.preload="auto";a.setAttribute("playsinline","");document.body.appendChild(a);
+  a.addEventListener("ended",()=>{if(PL.rep==="one"){a.currentTime=0;a.play().catch(()=>{});return}plNext(true)});
+  a.addEventListener("play",plBar);a.addEventListener("pause",plBar);
+  a.addEventListener("timeupdate",()=>{if("mediaSession" in navigator&&a.duration&&isFinite(a.duration)){try{navigator.mediaSession.setPositionState({duration:a.duration,position:Math.min(a.currentTime,a.duration),playbackRate:1})}catch(e){}}});
+  if("mediaSession" in navigator){const ms=navigator.mediaSession;
+    ms.setActionHandler("play",()=>a.play());ms.setActionHandler("pause",()=>a.pause());
+    ms.setActionHandler("previoustrack",()=>plPrev());ms.setActionHandler("nexttrack",()=>plNext(false));
+    try{ms.setActionHandler("seekto",d=>{if(d.seekTime!=null)a.currentTime=d.seekTime})}catch(e){}
+    try{ms.setActionHandler("seekbackward",d=>{a.currentTime=Math.max(0,a.currentTime-(d.seekOffset||10))})}catch(e){}
+    try{ms.setActionHandler("seekforward",d=>{a.currentTime=Math.min(a.duration||1e9,a.currentTime+(d.seekOffset||10))})}catch(e){}}
+  return a}
+async function plPlay(i){const x=PL.list[i];if(!x)return;PL.i=i;const a=plAudio();
+  try{await urlsFor(PL.list.slice(i,i+5));a.src=S.urls[x.path];await a.play()}catch(e){toast(e.message||"Abspielen nicht möglich")}
+  if("mediaSession" in navigator){try{navigator.mediaSession.metadata=new MediaMetadata({title:x.titel,artist:`Männerchor Thun${x.stimme?" · "+x.stimme:""}`,album:x.lied||"Übungsaufnahmen",
+    artwork:[{src:new URL("icon-512.png",location.href).href,sizes:"512x512",type:"image/png"},{src:new URL("icon-192.png",location.href).href,sizes:"192x192",type:"image/png"}]})}catch(e){}}
+  plBar();if(route()[0]==="player")render()}
+function plNext(auto){if(!PL.list.length)return;let n=PL.i+1;if(n>=PL.list.length){if(auto&&PL.rep==="off"){plBar();return}n=0}plPlay(n)}
+function plPrev(){const a=plAudio();if(a.currentTime>3){a.currentTime=0;return}plPlay(PL.i>0?PL.i-1:PL.list.length-1)}
+function plBar(){let b=document.getElementById("plbar");const a=document.getElementById("plaudio"),x=PL.list[PL.i];document.body.classList.toggle("hasplbar",!!(a&&x));
+  if(!a||!x){if(b)b.remove();return}
+  if(!b){b=document.createElement("div");b.id="plbar";b.className="noprint";document.body.appendChild(b)}
+  b.innerHTML=`<button class="plb" data-act="plprev" aria-label="zurück">⏮</button><button class="plb main" data-act="pltoggle" aria-label="Wiedergabe">${a.paused?"▶":"⏸"}</button><button class="plb" data-act="plnext" aria-label="weiter">⏭</button>
+    <div class="plt" data-act="go" data-r="player"><b>${esc(x.titel)}</b><span>${esc(x.lied||"")}${x.stimme?" · "+esc(x.stimme):""} · ${PL.i+1}/${PL.list.length}</span></div>
+    <button class="plb" data-act="plrep" title="Wiederholen">${PL.rep==="one"?"🔂":PL.rep==="all"?"🔁":"➡️"}</button><button class="plb" data-act="plstop" aria-label="schliessen">✕</button>`}
+function vPlayer(){const c=plCandidates(),years=[...new Set(S.files.filter(x=>x.art==="audio").map(yearOf).filter(Boolean))].sort((a,b)=>b-a);
+  if(!PL.sel)PL.sel=new Set(c.map(x=>x.id));const cur=PL.list[PL.i],a=document.getElementById("plaudio");
+  const groups=[...new Set(c.map(x=>x.lied||"Allgemein"))];
+  return`<button class="btn ghost sm" data-act="go" data-r="material" style="margin-bottom:10px">← Noten</button><h1>🎧 Übungsplayer</h1>
+  <p class="muted small" style="margin-top:-4px">Die Aufnahmen ${PL.scope==="mine"?`für ${esc(S.me.stimme||"deine Stimme")}`:"aller Stimmen"} – nacheinander oder einzeln wiederholt. Läuft auch bei gesperrtem Bildschirm und im Auto über Bluetooth bzw. CarPlay.</p>
+  <div class="card"><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <label class="small muted">Stimme<select class="input" data-chg="plscope"><option value="mine" ${PL.scope==="mine"?"selected":""}>meine Stimme${S.me.stimme?" ("+esc(S.me.stimme)+")":""}</option><option value="alle" ${PL.scope==="alle"?"selected":""}>alle Stimmen</option></select></label>
+    <label class="small muted">Jahr (hochgeladen)<select class="input" data-chg="plyear"><option value="alle">alle Jahre</option>${years.map(y=>`<option ${PL.year===String(y)?"selected":""}>${y}</option>`).join("")}</select></label></div>
+    <div class="row" style="margin-top:10px;flex-wrap:wrap"><button class="btn primary" data-act="plstart">▶ ${PL.sel.size?`${c.filter(x=>PL.sel.has(x.id)).length} Aufnahmen abspielen`:"Abspielen"}</button>
+      <button class="btn sm ${PL.rep==="all"?"on":""}" data-act="plrepset" data-m="all">🔁 alle wiederholen</button><button class="btn sm ${PL.rep==="one"?"on":""}" data-act="plrepset" data-m="one">🔂 Lied wiederholen</button><button class="btn sm ${PL.rep==="off"?"on":""}" data-act="plrepset" data-m="off">➡️ einmal durch</button></div>
+    <div class="row small" style="margin-top:8px"><a href="#" data-act="plall" data-on="1">alle auswählen</a> · <a href="#" data-act="plall" data-on="0">keine</a></div></div>
+  ${c.length?groups.map(gn=>`<div class="card" style="padding:8px 12px"><b class="small">${esc(gn)}</b>${c.filter(x=>(x.lied||"Allgemein")===gn).map(x=>{const on=cur&&cur.id===x.id;
+    return`<div class="row" style="padding:6px 0;border-top:1px solid var(--line);flex-wrap:nowrap"><input type="checkbox" data-chg="plsel" data-id="${x.id}" ${PL.sel.has(x.id)?"checked":""} style="flex:none">
+      <div class="grow" style="min-width:0"><div class="nm" style="${on?"color:var(--brand);font-weight:700":""}">${on&&a&&!a.paused?"🔊 ":""}${esc(x.titel)}</div><div class="sub small muted">${esc(x.stimme||"alle Stimmen")}${yearOf(x)?" · "+yearOf(x):""}</div></div>
+      <button class="btn sm" data-act="plone" data-id="${x.id}" title="nur dieses Lied, wiederholt">🔂</button><button class="btn sm" data-act="plfrom" data-id="${x.id}" title="ab hier abspielen">▶</button></div>`}).join("")}</div>`).join("")
+   :`<p class="muted">Keine Aufnahmen gefunden${PL.year!=="alle"?" für "+PL.year:""}.</p>`}
+  <div class="card soft small"><b>Im Auto:</b> Wiedergabe hier starten, dann das Handy verbinden. Titel, Pause und Vor/Zurück erscheinen im Auto (Apple CarPlay unter «Wird gespielt», Bluetooth-Anzeige) und auf dem Sperrbildschirm. Android Auto zeigt Web-Apps nicht als eigene App – die Musik läuft aber über Bluetooth bzw. die Medien-Steuerung. Tipp iPhone: die Chor-App vorher vom Home-Bildschirm öffnen.</div>`}
 /* ---------- Download (Unterlagen meiner Stimme) ---------- */
 const isMine=x=>{const my=S.me.stimme||"";return my==="Chorleitung"||!x.stimme||x.stimme===my||(x.stimme==="Tenöre"&&/Tenor/.test(my))||(x.stimme==="Bässe"&&/Bass/.test(my))};
 const extOf=x=>{const m=(x.path||"").match(/\.([a-z0-9]{2,4})$/i);return m?m[1].toLowerCase():x.art==="noten"?"pdf":"m4a"};
@@ -512,6 +566,7 @@ function vMaterial(){
   const fs=S.files.filter(x=>(f==="alle"||(f==="mine"?mine(x):x.art===f))&&(!q||[x.titel,x.lied,x.stimme].join(" ").toLowerCase().includes(q)))
     .sort((a,b)=>AO.indexOf(a.art)-AO.indexOf(b.art)||SO.indexOf(a.stimme||"")-SO.indexOf(b.stimme||"")||a.titel.localeCompare(b.titel));
   let h=`<div class="row between"><h1 style="margin:0">Noten & Aufnahmen</h1>${isN()?`<button class="btn sm primary" data-act="upnew">+ Hochladen</button>`:""}</div>
+    <button class="btn primary" data-act="go" data-r="player" style="width:100%;margin:6px 0 4px">🎧 Übungsplayer – meine Stimme abspielen</button>
     <p class="muted small">Nur für die aktiven Sänger – bitte nicht weitergeben.</p>
     ${S.me.stimme&&S.files.length?(()=>{const ms=S.files.filter(isMine),mb=ms.reduce((a,x)=>a+(x.groesse||0),0);return`<div class="card soft"><div class="row between"><div><b>⬇ Meine Unterlagen · ${esc(S.me.stimme)}</b><div class="small muted">${ms.filter(x=>x.art==="noten").length} Noten, ${ms.filter(x=>x.art==="audio").length} Aufnahmen (eigene Stimme und Gesamtaufnahmen) · ${fSize(mb)}</div></div>
       <button class="btn sm primary" data-act="dlmine">Alle als ZIP</button></div><p class="small muted" style="margin:6px 0 0">Die ZIP-Datei enthält einen Ordner pro Lied. Auf dem Handy am besten im WLAN herunterladen.</p></div>`})():""}
@@ -1013,7 +1068,7 @@ function vChooser(){$("#tabs").hidden=true;$("#app").innerHTML=`<div class="choo
 function render(){if(!S.me){vLogin();return}
   let picked=false;try{picked=sessionStorage.getItem("chor_pick")==="1"}catch(e){picked=true}
   if(!picked&&store.get("chor_nopick")!=="1"&&!location.hash.replace(/^#\/?/,"")){vChooser();return}
-  const[r,id]=route();const V={push:vPush,dieseapp:vDieseApp,start:vStart,termine:vTermine,termin:()=>vTermin(id),chat:vChat,material:vMaterial,mehr:vMehr,mitglieder:vMitglieder,geburtstage:vGeburtstage,stamm:()=>vStamm(id||S.me.id),ehemalige:vEhemalige,funktionen:vFunktionen,ahnen:()=>vAhnen(location.hash.split("/").slice(2).join("/")),kalender:vKalender,ehrungen:vEhrungen,umfragen:vUmfragen,abwesenheit:vAbwesenheit,blatt:()=>vBlatt(id),vorstand:vVorstand,statistik:vStatistik,verwaltung:vVerwaltung}[r]||vStart;
+  const[r,id]=route();const V={player:vPlayer,push:vPush,dieseapp:vDieseApp,start:vStart,termine:vTermine,termin:()=>vTermin(id),chat:vChat,material:vMaterial,mehr:vMehr,mitglieder:vMitglieder,geburtstage:vGeburtstage,stamm:()=>vStamm(id||S.me.id),ehemalige:vEhemalige,funktionen:vFunktionen,ahnen:()=>vAhnen(location.hash.split("/").slice(2).join("/")),kalender:vKalender,ehrungen:vEhrungen,umfragen:vUmfragen,abwesenheit:vAbwesenheit,blatt:()=>vBlatt(id),vorstand:vVorstand,statistik:vStatistik,verwaltung:vVerwaltung}[r]||vStart;
   $("#app").innerHTML=V();$("#tabs").hidden=false;renderTabs()}
 
 /* ---------- Push-Nachrichten (Web Push, Service Worker sw.js) ---------- */
@@ -1088,6 +1143,15 @@ function printDoc(){const app=$("#app");if(!app)return;const h1=app.querySelecto
   setTimeout(()=>window.print(),50)}
 const PBTN=`<button class="btn sm noprint" data-act="print" title="Als PDF speichern oder drucken">🖨 PDF / Drucken</button>`;
 const A={
+  plstart:()=>{const c=plCandidates().filter(x=>PL.sel.has(x.id));if(!c.length)return toast("Bitte mindestens eine Aufnahme auswählen");PL.list=c;if(PL.rep==="one")PL.rep="all";plSave();plPlay(0)},
+  plfrom:d=>{const c=plCandidates().filter(x=>PL.sel.has(x.id)||x.id===d.id);PL.list=c;plSave();plPlay(Math.max(0,c.findIndex(x=>x.id===d.id)))},
+  plone:d=>{const x=S.files.find(f=>f.id===d.id);if(!x)return;PL.list=[x];PL.rep="one";plSave();plPlay(0)},
+  pltoggle:()=>{const a=plAudio();if(a.paused)a.play().catch(()=>{});else a.pause()},
+  plnext:()=>plNext(false),plprev:()=>plPrev(),
+  plrep:()=>{PL.rep=PL.rep==="all"?"one":PL.rep==="one"?"off":"all";plSave();plBar();toast(PL.rep==="all"?"Alle wiederholen":PL.rep==="one"?"Aktuelles Lied wiederholen":"Einmal durch, dann Stopp");if(route()[0]==="player")render()},
+  plrepset:d=>{PL.rep=d.m;plSave();plBar();render()},
+  plstop:()=>{const a=document.getElementById("plaudio");if(a){a.pause();a.removeAttribute("src");a.load()}PL.i=-1;plBar();if("mediaSession" in navigator)navigator.mediaSession.metadata=null},
+  plall:d=>{PL.sel=new Set(d.on==="1"?plCandidates().map(x=>x.id):[]);plSave();render()},
   go:d=>{closeModal();go(d.r)},close:()=>closeModal(),
   print:()=>printDoc(),
   ernennen:async d=>{const y=S.ehrJahr||new Date().getFullYear(),x=ehrData.find(p=>p.id===d.id),txt=`${d.t} ${y}`;if(!confirm(`${x.vorname} ${x.name} zum «${d.t}» ${y} ernennen?\nDer Eintrag kommt ins Stammblatt und in die History.`))return;
@@ -1174,6 +1238,9 @@ document.addEventListener("input",e=>{
       <div class="row" style="flex-wrap:nowrap">${p.aktiv?`<button class="btn sm ghost" data-act="setm" data-id="${p.id}" data-a="0" data-r="${p.rolle||"saenger"}">inaktiv</button>`:`<button class="btn sm primary" data-act="setm" data-id="${p.id}" data-a="1" data-r="${p.rolle||"saenger"}">aktiv</button>`}${p.rolle==="vorstand"?`<button class="btn sm ghost" data-act="setm" data-id="${p.id}" data-a="${p.aktiv?1:0}" data-r="saenger">– ${VS()}</button>`:`<button class="btn sm" data-act="setm" data-id="${p.id}" data-a="${p.aktiv===false?0:1}" data-r="vorstand">+ ${VS()}</button>`}</div></div>`).join("")||`<p class="muted small">Niemand gefunden.</p>`}
     catch(err){box.innerHTML=`<p class="muted small">${esc(err.message)}</p>`}},300)}});
 document.addEventListener("change",e=>{const el=e.target;
+  if(el.dataset.chg==="plsel"){if(!PL.sel)PL.sel=new Set();if(el.checked)PL.sel.add(el.dataset.id);else PL.sel.delete(el.dataset.id);plSave();const b=document.querySelector('[data-act="plstart"]');if(b)b.textContent=`▶ ${plCandidates().filter(x=>PL.sel.has(x.id)).length} Aufnahmen abspielen`;return}
+  if(el.dataset.chg==="plyear"){PL.year=el.value;PL.sel=null;plSave();render();return}
+  if(el.dataset.chg==="plscope"){PL.scope=el.value;PL.sel=null;plSave();render();return}
   if(el.id==="spfile"&&el.files[0]){const r=new FileReader();r.onload=()=>doSpImport(String(r.result));r.readAsText(el.files[0],"utf-8")}
   if(el.id==="impfile"&&el.files[0]){const f=el.files[0];if(/\.xlsx?$/i.test(f.name)){readXlsx(f).then(doImport).catch(e=>toast(e.message))}else{const r=new FileReader();r.onload=()=>doImport(String(r.result));r.readAsText(f,"utf-8")}}
   if(el.dataset.chg==="sjahr"){S.statJahr=+el.value;render()}
