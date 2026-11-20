@@ -11,6 +11,8 @@ self.addEventListener("push", e => {
     icon: "icon-192.png",
     badge: "icon-192.png",
     tag: d.tag || undefined,
+    requireInteraction: true,  /* Android/Computer: bleibt stehen, bis man sie antippt oder wegwischt */
+    renotify: !!d.tag,
     data: { url: d.url || "./" }
   }));
 });
