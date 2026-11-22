@@ -316,7 +316,7 @@ const LOGO="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANAAAABpCAYAAABLYa3JAA
 /* ================= MCT Chor-App =================
    Für die aktiven Sänger des Männerchors Thun. Daten in Supabase (gleiche Datenbank wie die Herrenabend-App),
    Zugriff nur über geprüfte Funktionen mit dem persönlichen Code. Dateien im privaten Speicher «chor». */
-const APP_VERSION="3.16"; /* bei jeder Änderung erhöhen */
+const APP_VERSION="3.17"; /* bei jeder Änderung erhöhen */
 const SUPA={url:"https://tvygwnawrkxdhzghxgfv.supabase.co",key:"sb_publishable_yO40Pv19n6Wq0Wh769VZCg_q9BRTBvd"};
 const FILES_FN=SUPA.url+"/functions/v1/chor-files";
 const PUSH_FN=SUPA.url+"/functions/v1/chor-push",VAPID_PUBLIC="BNWkxTW3k3B7aTQY4r7nJ5VxkPL57BxlhuReulrRmmi8KPKTEZeYG52AFhSLN5o5Gs-Lhr5fqoMqBqqpBMyywEo";
@@ -495,6 +495,37 @@ function vChat(){S.unread=0;renderTabs();
   setTimeout(()=>{const c=$("#chatlist");if(c)c.lastElementChild?.scrollIntoView({block:"end"})},30);
   return h}
 
+
+/* ---------- E-Mail an Sänger (Vorstand/Obmannschaft) – wie AC Thun: Platzhalter, Test, BCC ---------- */
+let mailInfo=null;
+function vMail(){if(!isV())return`<p class="muted">Nur für ${VS()==="Vorstand"?"den Vorstand":"die Obmannschaft"}.</p>`;
+  if(!mailInfo){if(!vMail.busy){vMail.busy=true;rpc("chor_mail_info",{p_code:S.code}).then(x=>{mailInfo=x;vMail.busy=false;render()}).catch(e=>{vMail.busy=false;toast(e.message)})}return`<button class="btn ghost sm" data-act="go" data-r="mehr" style="margin-bottom:10px">← Mehr</button><h1>E-Mail</h1><p class="muted">wird geladen …</p>`}
+  const em=new Map((mailInfo.list||[]).map(x=>[x.id,x.email])),act=S.members.filter(m=>m.aktiv).sort((a,b)=>a.name.localeCompare(b.name)||a.vorname.localeCompare(b.vorname));
+  const d=S.mailDraft||{};setTimeout(mlCount,0);
+  return`<button class="btn ghost sm" data-act="go" data-r="mehr" style="margin-bottom:10px">← Mehr</button><h1>E-Mail an ${isVet()?"die Veteranen":"die Sänger"}</h1>
+  <div class="card" style="display:grid;gap:6px"><label class="small muted">Empfänger</label><select id="mlw" class="input" data-chg="mlw"><option value="alle">alle aktiven Sänger (${act.length})</option>${["Chorleitung",...STIMMEN].filter(st=>act.some(m=>m.stimme===st)).map(st=>`<option value="st:${st}" ${d.who==="st:"+st?"selected":""}>${st} (${act.filter(m=>m.stimme===st).length})</option>`).join("")}<option value="pick" ${d.who==="pick"?"selected":""}>einzelne auswählen …</option></select>
+    <div id="mlpick" style="display:${d.who==="pick"?"":"none"};max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:6px 10px">${act.map(m=>`<label class="row small" style="padding:3px 0"><input type="checkbox" class="mlcb" value="${m.id}" ${(d.ids||[]).includes(m.id)?"checked":""}> ${esc(m.name)} ${esc(m.vorname)}${em.get(m.id)?"":` <span class="muted">· ohne E-Mail</span>`}</label>`).join("")}</div>
+    <p class="small" id="mlcnt" style="margin:0"></p>
+    <label class="small muted">Betreff</label><input id="mls" class="input" value="${esc(d.subject||"")}">
+    <label class="small muted">Text</label><textarea id="mlt" class="input" style="min-height:220px">${esc(d.text||`Lieber {vorname}\n\n\n\nHerzliche Grüsse\n${S.me.vorname}`)}</textarea>
+    <p class="small muted" style="margin:0">Platzhalter: <code>{vorname}</code> <code>{name}</code> <code>{link}</code> (persönlicher Link zur Chor-App). Absender: ${isVet()?"Veteranen MCT":"Männerchor Thun"}; Antworten gehen an ${esc(mailInfo.me||"– (für dich ist keine E-Mail hinterlegt)")}.</p>
+    <div class="row" style="flex-wrap:wrap"><button class="btn" data-act="mltest">Testmail an mich</button><button class="btn primary" data-act="mlsend">Senden</button></div>
+    <div id="mlres"></div>
+    <button class="btn ghost sm" data-act="mlbcc">Stattdessen im eigenen Mailprogramm öffnen (BCC)</button>
+    <p class="small muted" style="margin:0">Ohne E-Mail-Adresse: ${act.filter(m=>!em.get(m.id)).map(m=>esc(full(m))).join(", ")||"–"}</p></div>`}
+function mlTargets(){const w=$("#mlw")?.value||"alle",act=S.members.filter(m=>m.aktiv);
+  return w==="pick"?[...document.querySelectorAll(".mlcb:checked")].map(c=>c.value):w.startsWith("st:")?act.filter(m=>m.stimme===w.slice(3)).map(m=>m.id):act.map(m=>m.id)}
+function mlCount(){const el=$("#mlcnt");if(!el)return;const t=mlTargets(),em=new Map(((mailInfo&&mailInfo.list)||[]).map(x=>[x.id,x.email]));const w=t.filter(id=>em.get(id)).length;
+  el.textContent=`${t.length} Empfänger${t.length-w?` – davon ${t.length-w} ohne E-Mail`:""}`}
+document.addEventListener("change",e=>{const el=e.target;if(el.id==="mlw"){const pk=$("#mlpick");if(pk)pk.style.display=el.value==="pick"?"":"none";mlCount()}if(el.classList&&el.classList.contains("mlcb"))mlCount()});
+async function mlSend(test){const ids=mlTargets(),subject=($("#mls").value||"").trim(),text=$("#mlt").value||"";
+  S.mailDraft={who:$("#mlw").value,ids,subject,text};
+  if(!subject)return toast("Betreff fehlt");if(!ids.length)return toast("Keine Empfänger");
+  if(!test&&!confirm(`E-Mail an ${ids.length} Empfänger senden?`))return;
+  const res=$("#mlres");if(res)res.innerHTML=`<p class="small">Versand läuft …</p>`;
+  try{const j=await rpc("chor_mail_send",{p_code:S.code,p_persons:ids,p_subject:subject,p_text:text,p_test:!!test});
+    if(res)res.innerHTML=`<div class="okmsg">✓ ${test?"Testmail an dich gesendet":`${j.sent} E-Mails gesendet`}${(j.ohne_mail||[]).length?`<br><span class="small">Ohne E-Mail (nicht erreicht): ${j.ohne_mail.map(esc).join(", ")}</span>`:""}</div>`;
+    if(!test)S.mailDraft=null}catch(e){if(res)res.innerHTML=`<div class="note">${esc(e.message)}</div>`}}
 /* ---------- Übungsplayer: Aufnahmen meiner Stimme nacheinander oder einzeln wiederholt (Sperrbildschirm, CarPlay, Bluetooth) ---------- */
 const PL={list:[],i:-1,rep:"all",sel:null,year:"alle",scope:"mine"};
 try{const o=JSON.parse(localStorage.getItem("chor_player")||"{}");if(o.rep)PL.rep=o.rep;if(o.year)PL.year=o.year;if(o.scope)PL.scope=o.scope;if(Array.isArray(o.sel))PL.sel=new Set(o.sel)}catch(e){}
@@ -718,7 +749,7 @@ function vDieseApp(){return`<button class="btn ghost sm" data-act="go" data-r="m
   <div class="card soft small"><b>Gut zu wissen:</b> läuft auf jedem Handy und Computer, ohne App-Store · Daten auf Servern in der Schweiz (Zürich) · Zugang nur mit persönlichem Code · keine Lizenzkosten für die Grundtechnik</div>
   <div class="card" style="border-color:var(--brand);text-align:center"><p style="margin:0 0 10px">Fragen, Demo oder Offerte? Wir zeigen euch die App gerne.</p><a class="btn primary" href="mailto:praesident@mcthun.com?subject=Interesse%20an%20der%20Vereins-App%20des%20M%C3%A4nnerchors%20Thun">✉️ Kontakt aufnehmen</a><p class="small muted" style="margin:10px 0 0">Männerchor Thun 1829 · praesident@mcthun.com</p></div>`}
 function vMehr(){const t=(r,ic,l,d)=>`<button class="tile" data-act="go" data-r="${r}"><span class="ic">${ic}</span><b>${l}</b><span>${d}</span></button>`;
-  return`<h1>Mehr</h1><div class="tiles">${t("push","🔔","Mitteilungen","Push aufs Handy")}${t("dieseapp","📱","Diese App","für andere Vereine")}${t("stamm/"+S.me.id,"🪪","Mein Stammblatt","Daten & History")}${t("mitglieder","👥","Sänger","nach Stimmen")}${t("geburtstage","🎂","Geburtstage","mit Gratulation")}${t("statistik","📊","Präsenz","Statistik")}${t("kalender","📅","Kalender-Abo","Outlook, iPhone, Google")}${t("umfragen","🗳️","Umfragen",(S.polls||[]).filter(p=>pollOpen(p)&&!(p.mine&&p.mine.length)).length?"offen: "+(S.polls||[]).filter(p=>pollOpen(p)&&!(p.mine&&p.mine.length)).length:"abstimmen")}${t("abwesenheit","🤒","Krank & abwesend","melden")}<button class="tile" data-act="toha"><span class="ic">🎩</span><b>Herrenabend-App</b><span>195. Herrenabend</span></button>${(isVet()?t("vorstand","🏛️","Obmannschaft","Funktionen & History"):t("vorstand","🏛️","Vorstand & Chargen","Funktionen & History"))}${isV()&&!isVet()?t("ehrungen","🏅","Ehrungen","Veteranen-Ernennungen"):""}${isV()?t("verwaltung","⚙️","Verwaltung","Mitglieder & Import"):""}</div>
+  return`<h1>Mehr</h1><div class="tiles">${t("push","🔔","Mitteilungen","Push aufs Handy")}${t("dieseapp","📱","Diese App","für andere Vereine")}${t("stamm/"+S.me.id,"🪪","Mein Stammblatt","Daten & History")}${t("mitglieder","👥","Sänger","nach Stimmen")}${t("geburtstage","🎂","Geburtstage","mit Gratulation")}${t("statistik","📊","Präsenz","Statistik")}${t("kalender","📅","Kalender-Abo","Outlook, iPhone, Google")}${t("umfragen","🗳️","Umfragen",(S.polls||[]).filter(p=>pollOpen(p)&&!(p.mine&&p.mine.length)).length?"offen: "+(S.polls||[]).filter(p=>pollOpen(p)&&!(p.mine&&p.mine.length)).length:"abstimmen")}${t("abwesenheit","🤒","Krank & abwesend","melden")}<button class="tile" data-act="toha"><span class="ic">🎩</span><b>Herrenabend-App</b><span>195. Herrenabend</span></button>${(isVet()?t("vorstand","🏛️","Obmannschaft","Funktionen & History"):t("vorstand","🏛️","Vorstand & Chargen","Funktionen & History"))}${isV()&&!isVet()?t("ehrungen","🏅","Ehrungen","Veteranen-Ernennungen"):""}${isV()?t("mail","✉️","E-Mail","an alle oder einzelne"):""}${isV()?t("verwaltung","⚙️","Verwaltung","Mitglieder & Import"):""}</div>
   <div class="card soft small" style="margin-top:14px">Angemeldet als <b>${esc(full(S.me))}</b>${isV()?" ("+(S.me.ok?"Supervisor – beide Chöre":VS())+")":""} · ${chorName()}${S.chors&&S.chors.mc&&S.chors.vet?` · <a href="#" data-act="chorsw">${isVet()?"zum Männerchor":"zu den Veteranen"} wechseln</a>`:""}. <a href="#" data-act="logout">Abmelden</a><br><span class="muted">Chor-App Version ${APP_VERSION}</span></div>`}
 function vMitglieder(){const act=S.members.filter(m=>m.aktiv);
   let h=`<button class="btn ghost sm" data-act="go" data-r="mehr" style="margin-bottom:10px">← Mehr</button><div class="row between"><h1 style="margin:0">Sänger</h1>${PBTN}</div><p class="muted">${act.length} aktive Sänger${isVet()?" bei den Veteranen":""}</p>`;
@@ -1068,7 +1099,7 @@ function vChooser(){$("#tabs").hidden=true;$("#app").innerHTML=`<div class="choo
 function render(){if(!S.me){vLogin();return}
   let picked=false;try{picked=sessionStorage.getItem("chor_pick")==="1"}catch(e){picked=true}
   if(!picked&&store.get("chor_nopick")!=="1"&&!location.hash.replace(/^#\/?/,"")){vChooser();return}
-  const[r,id]=route();const V={player:vPlayer,push:vPush,dieseapp:vDieseApp,start:vStart,termine:vTermine,termin:()=>vTermin(id),chat:vChat,material:vMaterial,mehr:vMehr,mitglieder:vMitglieder,geburtstage:vGeburtstage,stamm:()=>vStamm(id||S.me.id),ehemalige:vEhemalige,funktionen:vFunktionen,ahnen:()=>vAhnen(location.hash.split("/").slice(2).join("/")),kalender:vKalender,ehrungen:vEhrungen,umfragen:vUmfragen,abwesenheit:vAbwesenheit,blatt:()=>vBlatt(id),vorstand:vVorstand,statistik:vStatistik,verwaltung:vVerwaltung}[r]||vStart;
+  const[r,id]=route();const V={mail:vMail,player:vPlayer,push:vPush,dieseapp:vDieseApp,start:vStart,termine:vTermine,termin:()=>vTermin(id),chat:vChat,material:vMaterial,mehr:vMehr,mitglieder:vMitglieder,geburtstage:vGeburtstage,stamm:()=>vStamm(id||S.me.id),ehemalige:vEhemalige,funktionen:vFunktionen,ahnen:()=>vAhnen(location.hash.split("/").slice(2).join("/")),kalender:vKalender,ehrungen:vEhrungen,umfragen:vUmfragen,abwesenheit:vAbwesenheit,blatt:()=>vBlatt(id),vorstand:vVorstand,statistik:vStatistik,verwaltung:vVerwaltung}[r]||vStart;
   $("#app").innerHTML=V();$("#tabs").hidden=false;renderTabs()}
 
 /* ---------- Push-Nachrichten (Web Push, Service Worker sw.js) ---------- */
@@ -1097,7 +1128,7 @@ function vPush(){let h=`<button class="btn ghost sm" data-act="go" data-r="mehr"
   if(isL())h+=`<div class="card"><h3>Push-Nachricht senden</h3><p class="small muted">Geht an alle aktiven Sänger, die Mitteilungen aktiviert haben. Für Sänger ohne App: Text kopieren und in Webling als SMS versenden.</p>
     <div style="display:grid;gap:6px"><input id="pt" class="input" maxlength="80" placeholder="Titel, z.B. Probe fällt aus"><textarea id="pb" class="input" rows="3" maxlength="240" placeholder="Text, z.B. Die Probe vom Donnerstag fällt wegen … aus."></textarea>
     <select id="pv" class="input"><option value="">an alle Stimmen</option>${STIMMEN.map(x=>`<option>${x}</option>`).join("")}</select></div>
-    <label class="row small" style="margin-top:6px"><input type="checkbox" id="pinfo" checked> auch als Ankündigung in der App speichern (zum Nachlesen)</label><div class="row" style="margin-top:8px"><button class="btn sm primary" data-act="pushsend">Senden</button><button class="btn sm" data-act="pushcopy">Text für SMS kopieren</button></div><div id="pushlog" class="small muted" style="margin-top:8px"></div></div>`;
+    <label class="row small" style="margin-top:6px"><input type="checkbox" id="pinfo" checked> auch als Ankündigung in der App speichern (zum Nachlesen)</label><label class="row small" style="margin-top:4px"><input type="checkbox" id="pmail"> zusätzlich per E-Mail senden (an die gewählte Stimme bzw. alle)</label><div class="row" style="margin-top:8px"><button class="btn sm primary" data-act="pushsend">Senden</button><button class="btn sm" data-act="pushcopy">Text für SMS kopieren</button></div><div id="pushlog" class="small muted" style="margin-top:8px"></div></div>`;
   setTimeout(pushStatus,0);return h}
 async function pushStatus(){const el=$("#pushst");if(!el)return;let sub=null;try{sub=await pushSub()}catch(e){}
   let st={};try{st=await rpc("chor_push_stats",{p_code:S.code})}catch(e){}
@@ -1144,6 +1175,9 @@ function printDoc(){const app=$("#app");if(!app)return;const h1=app.querySelecto
   setTimeout(()=>window.print(),50)}
 const PBTN=`<button class="btn sm noprint" data-act="print" title="Als PDF speichern oder drucken">🖨 PDF / Drucken</button>`;
 const A={
+  mltest:()=>mlSend(true),mlsend:()=>mlSend(false),
+  mlbcc:()=>{const em=new Map(((mailInfo&&mailInfo.list)||[]).map(x=>[x.id,x.email]));const bcc=mlTargets().map(id=>em.get(id)).filter(Boolean);if(!bcc.length)return toast("Keine E-Mail-Adressen");
+    location.href=`mailto:${encodeURIComponent(mailInfo.me||"")}?bcc=${encodeURIComponent(bcc.join(","))}&subject=${encodeURIComponent($("#mls").value||"")}&body=${encodeURIComponent(($("#mlt").value||"").replace(/\{vorname\}|\{name\}|\{link\}/g,""))}`},
   plstart:()=>{const c=plCandidates().filter(x=>PL.sel.has(x.id));if(!c.length)return toast("Bitte mindestens eine Aufnahme auswählen");PL.list=c;if(PL.rep==="one")PL.rep="all";plSave();plPlay(0)},
   plfrom:d=>{const c=plCandidates().filter(x=>PL.sel.has(x.id)||x.id===d.id);PL.list=c;plSave();plPlay(Math.max(0,c.findIndex(x=>x.id===d.id)))},
   plone:d=>{const x=S.files.find(f=>f.id===d.id);if(!x)return;PL.list=[x];PL.rep="one";plSave();plPlay(0)},
@@ -1199,13 +1233,27 @@ const A={
   pushoff:async()=>{await pushOff();toast("Mitteilungen deaktiviert");pushStatus()},
   pushtest:()=>pushSend({test:true,title:"Männerchor Thun",body:"Test: Mitteilungen funktionieren 🎵"}).then(j=>toast(j.sent?"Test gesendet":"Kein Gerät gefunden")).catch(e=>toast(e.message)),
   pushsend:()=>{const t=$("#pt").value.trim(),b=$("#pb").value.trim(),v=$("#pv").value;if(!t||!b)return toast("Bitte Titel und Text eingeben");if(!confirm(`Push-Nachricht an ${v||"alle"} senden?`))return;
-    const keep=$("#pinfo")?.checked!==false;
+    const keep=$("#pinfo")?.checked!==false,viaMail=$("#pmail")?.checked===true;
+    if(viaMail){const ids=S.members.filter(m=>m.aktiv&&(!v||m.stimme===v||m.stimme==="Chorleitung")).map(m=>m.id);
+      rpc("chor_mail_send",{p_code:S.code,p_persons:ids,p_subject:t,p_text:`Lieber {vorname}\n\n${b}\n\nZur Chor-App: {link}\n\nHerzliche Grüsse\n${S.me.vorname}`,p_test:false})
+        .then(j=>toast(`E-Mail an ${j.sent} gesendet${(j.ohne_mail||[]).length?` · ${j.ohne_mail.length} ohne E-Mail`:""}`)).catch(e=>toast("E-Mail: "+e.message))}
     (keep?rpc("chor_post",{p_code:S.code,p_kind:"info",p_text:`📣 ${t}${v?" ("+v+")":""}\n${b}`}).catch(e=>{toast(e.message)}):Promise.resolve())
     .then(()=>pushSend({title:t,body:b,stimme:v||null,url:keep?"./#/chat":"./"})).then(async j=>{if(keep){await load().catch(()=>{})}toast(`Gesendet an ${j.sent} Gerät${j.sent===1?"":"e"}`);$("#pt").value="";$("#pb").value="";pushStatus()}).catch(e=>toast(e.message))},
   pushcopy:()=>{const t=[$("#pt").value.trim(),$("#pb").value.trim()].filter(Boolean).join(": ")+" – Männerchor Thun";(navigator.clipboard?.writeText(t)||Promise.reject()).then(()=>toast("Text kopiert – in Webling als SMS einfügen"),()=>toast(t))},
   pdel:d=>{if(confirm("Beitrag löschen?"))call("chor_post_action",{p_id:d.id,p_action:"loeschen"},"Gelöscht").catch(()=>{})},
   ppin:d=>call("chor_post_action",{p_id:d.id,p_action:"pin"}).catch(()=>{}),
-  congrats:d=>{const m=P(d.id);modal(`<h2>🎂 ${esc(full(m))} gratulieren</h2><p class="small muted">Die Gratulation erscheint im Chat und auf der Startseite von ${esc(m.vorname)}.</p><textarea id="ctxt" class="input" placeholder="Persönliche Worte (optional)"></textarea><div class="row" style="margin-top:12px"><button class="btn primary" data-act="congratsend" data-id="${d.id}">Gratulieren</button><button class="btn ghost" data-act="close">Abbrechen</button></div>`)},
+  congrats:async d=>{const m=P(d.id);const b=bdays().find(x=>x.m.id===d.id);const late=b&&b.days!==0&&b.ago>0;
+    const age=m.jg?((b&&late?new Date().getFullYear():b?b.d.getFullYear():new Date().getFullYear())-m.jg):null;
+    const txt=`Lieber ${m.vorname}\n\n${late?"Nachträglich ":""}herzliche Gratulation zum ${age?age+". ":""}Geburtstag! 🎉 Ich wünsche dir alles Gute, Gesundheit und viel Freude im neuen Lebensjahr – und weiterhin viel Freude beim Singen.\n\nHerzliche Grüsse\n${S.me.vorname}`;
+    modal(`<h2>🎂 ${esc(full(m))}${age?` – ${age} Jahre`:""}</h2><textarea id="ctxt" class="input" style="min-height:150px">${esc(txt)}</textarea>
+      <div style="display:grid;gap:8px;margin-top:10px"><button class="btn primary" data-act="congratsend" data-id="${d.id}">🎵 In der Chor-App gratulieren <span class="small" style="font-weight:400">(Chat & Startseite)</span></button><div id="cways" class="small muted">Weitere Wege werden geladen …</div></div>
+      <button class="btn ghost" data-act="close" style="margin-top:10px;width:100%">Schliessen</button>`);
+    let c=null;try{c=await rpc("chor_bday_contact",{p_code:S.code,p_person:d.id})}catch(e){}
+    const box=$("#cways");if(!box)return;const tel=c&&c.tel?String(c.tel).replace(/[^\d+]/g,""):"";const wa=tel?(tel.startsWith("00")?"+"+tel.slice(2):tel.startsWith("0")?"+41"+tel.slice(1):tel).replace("+",""):"";
+    box.className="";box.style.cssText="display:grid;gap:8px";
+    box.innerHTML=[wa?`<a class="btn" data-cw="wa" target="_blank" rel="noopener" href="https://wa.me/${wa}?text=">WhatsApp</a>`:"",tel?`<a class="btn" data-cw="sms" href="sms:${tel}?&body=">SMS</a>`:"",
+      c&&c.email?`<a class="btn" data-cw="mail" href="mailto:${esc(c.email)}?subject=${encodeURIComponent("Herzliche Gratulation"+(age?" zum "+age+". Geburtstag":""))}&body=">E-Mail</a>`:"",tel?`<a class="btn ghost" href="tel:${tel}">Anrufen</a>`:""].filter(Boolean).join("")||`<p class="small muted" style="margin:0">Keine Telefonnummer oder E-Mail hinterlegt.</p>`;
+    const upd=()=>{const t=encodeURIComponent($("#ctxt").value);box.querySelectorAll("a[data-cw]").forEach(a=>{a.href=a.href.replace(/(text=|body=)[^&]*$/,"$1"+t)})};upd();$("#ctxt").oninput=upd},
   congratsend:d=>{const t=$("#ctxt").value;closeModal();call("chor_congratulate",{p_person:d.id,p_text:t},"Gratulation gesendet 🎉").catch(()=>{})},
   upnew:()=>upForm(),upload:()=>doUpload(),
   open:async d=>{const x=S.files.find(f=>f.id===d.id);const w=window.open("","_blank");try{const u=await urlFor(x);if(w)w.location=u;else location.href=u}catch(e){if(w)w.close();toast(e.message)}},
