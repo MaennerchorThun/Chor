@@ -316,7 +316,7 @@ const LOGO="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANAAAABpCAYAAABLYa3JAA
 /* ================= MCT Chor-App =================
    Für die aktiven Sänger des Männerchors Thun. Daten in Supabase (gleiche Datenbank wie die Herrenabend-App),
    Zugriff nur über geprüfte Funktionen mit dem persönlichen Code. Dateien im privaten Speicher «chor». */
-const APP_VERSION="3.19"; /* bei jeder Änderung erhöhen */
+const APP_VERSION="3.20"; /* bei jeder Änderung erhöhen */
 const SUPA={url:"https://tvygwnawrkxdhzghxgfv.supabase.co",key:"sb_publishable_yO40Pv19n6Wq0Wh769VZCg_q9BRTBvd"};
 const FILES_FN=SUPA.url+"/functions/v1/chor-files";
 const PUSH_FN=SUPA.url+"/functions/v1/chor-push",VAPID_PUBLIC="BNWkxTW3k3B7aTQY4r7nJ5VxkPL57BxlhuReulrRmmi8KPKTEZeYG52AFhSLN5o5Gs-Lhr5fqoMqBqqpBMyywEo";
@@ -496,6 +496,8 @@ function vChat(){S.unread=0;renderTabs();
   return h}
 
 
+/* WhatsApp: Text teilen – man wählt in WhatsApp die Chor-Gruppe oder einzelne Kontakte */
+function waShare(text){const u="https://wa.me/?text="+encodeURIComponent(text);const w=window.open(u,"_blank");if(!w)location.href=u}
 /* ---------- E-Mail an Sänger (Vorstand/Obmannschaft) – wie AC Thun: Platzhalter, Test, BCC ---------- */
 let mailInfo=null;
 function vMail(){if(!isV())return`<p class="muted">Nur für ${VS()==="Vorstand"?"den Vorstand":"die Obmannschaft"}.</p>`;
@@ -511,7 +513,7 @@ function vMail(){if(!isV())return`<p class="muted">Nur für ${VS()==="Vorstand"?
     <p class="small muted" style="margin:0">Platzhalter: <code>{vorname}</code> <code>{name}</code> <code>{link}</code> (persönlicher Link zur Chor-App). Absender: ${isVet()?"Veteranen MCT":"Männerchor Thun"}; Antworten gehen an ${esc(mailInfo.me||"– (für dich ist keine E-Mail hinterlegt)")}.</p>
     <div class="row" style="flex-wrap:wrap"><button class="btn" data-act="mltest">Testmail an mich</button><button class="btn primary" data-act="mlsend">Senden</button></div>
     <div id="mlres"></div>
-    <button class="btn ghost sm" data-act="mlbcc">Stattdessen im eigenen Mailprogramm öffnen (BCC)</button>
+    <div class="row" style="flex-wrap:wrap"><button class="btn ghost sm" data-act="mlbcc">Stattdessen im eigenen Mailprogramm öffnen (BCC)</button><button class="btn ghost sm" data-act="mlwa">In WhatsApp teilen</button></div>
     <p class="small muted" style="margin:0">Ohne E-Mail-Adresse: ${act.filter(m=>!em.get(m.id)).map(m=>esc(full(m))).join(", ")||"–"}</p></div>`}
 function mlTargets(){const w=$("#mlw")?.value||"alle",act=S.members.filter(m=>m.aktiv);
   return w==="pick"?[...document.querySelectorAll(".mlcb:checked")].map(c=>c.value):w.startsWith("st:")?act.filter(m=>m.stimme===w.slice(3)).map(m=>m.id):act.map(m=>m.id)}
@@ -1128,7 +1130,7 @@ function vPush(){let h=`<button class="btn ghost sm" data-act="go" data-r="mehr"
   if(isL())h+=`<div class="card"><h3>Push-Nachricht senden</h3><p class="small muted">Geht an alle aktiven Sänger, die Mitteilungen aktiviert haben. Für Sänger ohne App: Text kopieren und in Webling als SMS versenden.</p>
     <div style="display:grid;gap:6px"><input id="pt" class="input" maxlength="80" placeholder="Titel, z.B. Probe fällt aus"><textarea id="pb" class="input" rows="3" maxlength="240" placeholder="Text, z.B. Die Probe vom Donnerstag fällt wegen … aus."></textarea>
     <select id="pv" class="input"><option value="">an alle Stimmen</option>${STIMMEN.map(x=>`<option>${x}</option>`).join("")}</select></div>
-    <label class="row small" style="margin-top:6px"><input type="checkbox" id="pinfo" checked> auch als Ankündigung in der App speichern (zum Nachlesen)</label><label class="row small" style="margin-top:4px"><input type="checkbox" id="pmail"> zusätzlich per E-Mail senden (an die gewählte Stimme bzw. alle)</label><div class="row" style="margin-top:8px"><button class="btn sm primary" data-act="pushsend">Senden</button><button class="btn sm" data-act="pushcopy">Text für SMS kopieren</button></div><div id="pushlog" class="small muted" style="margin-top:8px"></div></div>`;
+    <label class="row small" style="margin-top:6px"><input type="checkbox" id="pinfo" checked> auch als Ankündigung in der App speichern (zum Nachlesen)</label><label class="row small" style="margin-top:4px"><input type="checkbox" id="pmail"> zusätzlich per E-Mail senden (an die gewählte Stimme bzw. alle)</label><div class="row" style="margin-top:8px"><button class="btn sm primary" data-act="pushsend">Senden</button><button class="btn sm" data-act="pushcopy">Text für SMS kopieren</button><button class="btn sm" data-act="pushwa">In WhatsApp teilen</button></div><div id="pushlog" class="small muted" style="margin-top:8px"></div></div>`;
   setTimeout(pushStatus,0);return h}
 async function pushStatus(){const el=$("#pushst");if(!el)return;let sub=null;try{sub=await pushSub()}catch(e){}
   let st={};try{st=await rpc("chor_push_stats",{p_code:S.code})}catch(e){}
@@ -1175,6 +1177,9 @@ function printDoc(){const app=$("#app");if(!app)return;const h1=app.querySelecto
   setTimeout(()=>window.print(),50)}
 const PBTN=`<button class="btn sm noprint" data-act="print" title="Als PDF speichern oder drucken">🖨 PDF / Drucken</button>`;
 const A={
+  pushwa:()=>{const t=$("#pt").value.trim(),b=$("#pb").value.trim();if(!t&&!b)return toast("Bitte zuerst Titel und Text eingeben");waShare(`*${t}*${b?"\n"+b:""}\n\n${chorName()} · Chor-App: https://chor.maennerchorthun.ch/`)},
+  mlwa:()=>{const s2=($("#mls").value||"").trim(),t=($("#mlt").value||"").replace(/^Lieber \{vorname\}\s*/,"").replace(/\{vorname\}|\{name\}/g,"").replace(/\{link\}/g,"https://chor.maennerchorthun.ch/").trim();
+    if(!s2&&!t)return toast("Bitte zuerst Betreff und Text eingeben");waShare(`${s2?"*"+s2+"*\n\n":""}Liebe Sänger\n\n${t}`)},
   mltest:()=>mlSend(true),mlsend:()=>mlSend(false),
   mlbcc:()=>{const em=new Map(((mailInfo&&mailInfo.list)||[]).map(x=>[x.id,x.email]));const bcc=mlTargets().map(id=>em.get(id)).filter(Boolean);if(!bcc.length)return toast("Keine E-Mail-Adressen");
     location.href=`mailto:${encodeURIComponent(mailInfo.me||"")}?bcc=${encodeURIComponent(bcc.join(","))}&subject=${encodeURIComponent($("#mls").value||"")}&body=${encodeURIComponent(($("#mlt").value||"").replace(/\{vorname\}|\{name\}|\{link\}/g,""))}`},
