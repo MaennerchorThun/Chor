@@ -327,7 +327,7 @@ const LOGO0="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvM
 /* ================= Chor-Plattform (White-Label der Chor-App) =================
    Ein Chor = ein Mandant. Branding (Name, Logo, Farbe) kommt aus der Datenbank (cp.tenants).
    Daten im abgeschotteten Bereich «cp» (Zeilenschutz pro Mandant), Zugriff nur über cp_-Funktionen mit dem persönlichen Code. */
-const APP_VERSION="1.2"; /* bei jeder Änderung erhöhen */
+const APP_VERSION="1.4"; /* bei jeder Änderung erhöhen */
 const SUPA={url:"https://tvygwnawrkxdhzghxgfv.supabase.co",key:"sb_publishable_yO40Pv19n6Wq0Wh769VZCg_q9BRTBvd"};
 const FILES_FN=SUPA.url+"/functions/v1/cp-files";
 const PUSH_FN=SUPA.url+"/functions/v1/cp-push",VAPID_PUBLIC="BNWkxTW3k3B7aTQY4r7nJ5VxkPL57BxlhuReulrRmmi8KPKTEZeYG52AFhSLN5o5Gs-Lhr5fqoMqBqqpBMyywEo";
@@ -488,6 +488,108 @@ async function loadEvPeople(e){const el=$("#evpeople");if(!el)return;
     h+=`<div class="card"><div class="row between"><h3 style="margin:0">${l} (${ps.length})</h3></div>${st==="ja"?`<p class="small muted" style="margin:4px 0 0">${byStimme("ja")}</p>`:st==="an"?`<p class="small muted" style="margin:4px 0 0">${STIMMEN.map(s=>`${s}: ${ps.filter(p=>p.stimme===s).length}`).join(" · ")}</p>`:""}<div class="list">${ps.map(p=>`<div class="li" style="cursor:default"><div class="av">${ini(p)}</div><div class="grow"><div class="nm">${esc(full(p))}</div><div class="sub">${esc(p.stimme||"")}${p.grund?` · ${esc(p.grund)}`:""}</div></div>
       ${isV()&&past?`<label class="row small"><input type="checkbox" class="prchk" data-id="${p.id}" ${(p.praesent??p.status==="ja")?"checked":""}> anwesend</label>`:isV()&&!past?`<select class="input" style="width:auto;padding:4px" data-chg="setfor" data-id="${p.id}" data-ev="${e.id}"><option value="">–</option><option value="ja" ${p.status==="ja"?"selected":""}>dabei</option><option value="nein" ${p.status==="nein"?"selected":""}>nicht dabei</option><option value="vielleicht" ${p.status==="vielleicht"?"selected":""}>vielleicht</option></select>`:""}</div>`).join("")}</div></div>`}
   el.innerHTML=h}
+/* ---------- Präsenzkontrolle (Excel/CSV-Raster) importieren ---------- */
+let PRX=null;
+const prxIso=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+function prxParse(R){R=R.map(r=>(r||[]).map(v=>v==null?"":String(v).trim()));const lab=r=>prN(r[0]||"").replace(/[^a-z]/g,"");
+  const ncol=Math.max(...R.map(r=>r.length));let dates=new Array(ncol).fill(null),hdr=-1;
+  const iT=R.findIndex(r=>lab(r)==="tag"),iM=R.findIndex(r=>lab(r)==="monat"),iJ=R.findIndex(r=>lab(r)==="jahr");
+  if(iT>=0&&iM>=0){for(let j=1;j<ncol;j++){const t=+R[iT][j],m=+R[iM][j];let y=iJ>=0?+R[iJ][j]:new Date().getFullYear();if(y&&y<100)y+=2000;
+      if(t>=1&&t<=31&&m>=1&&m<=12&&y)dates[j]=`${y}-${pad(m)}-${pad(t)}`}hdr=Math.max(iT,iM,iJ)}
+  else for(let i=0;i<Math.min(R.length,15);i++){const ds=R[i].map(v=>{let m=v.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return`${m[1]}-${m[2]}-${m[3]}`;
+      m=v.match(/^(\d{1,2})\.(\d{1,2})\.(\d{2,4})$/);if(m){let y=+m[3];if(y<100)y+=2000;return`${y}-${pad(+m[2])}-${pad(+m[1])}`}return null});
+    if(ds.filter(Boolean).length>=2){dates=ds;hdr=i;break}}
+  const cols=dates.map((d,j)=>d?j:-1).filter(j=>j>0);if(!cols.length)return{err:"Keine Datumsspalten gefunden (Zeilen «Tag», «Monat», «Jahr» oder Datum in einer Kopfzeile)"};
+  const mark=v=>{const x=String(v||"").trim().toLowerCase();if(!x)return null;if(["1","x","✓","✔","ja","j"].includes(x))return true;if(["0","nein","n","-"].includes(x))return false;return undefined};
+  const rows=[];
+  for(let i=hdr+1;i<R.length;i++){const r=R[i],n=r[0]||"";if(!n||/^(total|summe|anlass|tag|monat|jahr)$/i.test(n))continue;
+    const v=cols.map(j=>mark(r[j]));if(v.some(x=>x===undefined)||!v.some(x=>x!==null))continue;
+    const vn=r[1]&&!/^\d/.test(r[1])?r[1]:"";rows.push({name:n,vorname:vn,v})}
+  if(!rows.length)return{err:"Keine Sänger-Zeilen mit 1/0 gefunden"};
+  return{cols:cols.map(j=>dates[j]),rows}}
+function prxMatch(P){const ppl=S.members.filter(m=>m.aktiv!==false),used=new Set();
+  for(const r of P.rows){const tk=prT(r.name+" "+r.vorname);let b=null;for(const p of ppl){const x=prScore(tk,p);if(x&&x.sc>=.62&&(!b||x.sc>b.x.sc))b={p,x}}
+    if(!b){r.id=null;r.conf="fehlt";continue}
+    const twin=ppl.some(q=>q.id!==b.p.id&&prSim(prT(q.name).join(""),prT(b.p.name).join(""))>=.78);
+    r.id=b.p.id;r.conf=b.x.sV?(b.x.sc>=.85?"ok":"pruefen"):(twin?"pruefen":b.x.sc>=.76?"ok":"pruefen");if(used.has(b.p.id))r.conf="doppelt";used.add(b.p.id)}
+  const now=new Date();
+  P.ev=P.cols.map(d=>{const es=S.events.filter(e=>!e.abgesagt&&prxIso(D(e.start))===d);const e=es[0]||null;
+    return{d,e,multi:es.length>1,future:e?D(e.start)>now:new Date(d)>now}});
+  return P}
+async function prxRead(f){try{const R=/\.xlsx?$/i.test(f.name)?await readXlsx(f):csvRows(await f.text());const P=prxParse(R);if(P.err)return toast(P.err);PRX=prxMatch(P);prxShow()}
+  catch(e){toast(e.message)}}
+function prxShow(){const P=PRX,dd=d=>{const[y,m,t]=d.split("-");return`${+t}.${+m}.${y.slice(2)}`};
+  const ppl=[...S.members].filter(m=>m.aktiv!==false).sort((a,b)=>(a.name||"").localeCompare(b.name||"","de")||(a.vorname||"").localeCompare(b.vorname||"","de"));
+  const badge={ok:"",pruefen:` <span style="color:#b26b00">⚠ prüfen</span>`,fehlt:` <span style="color:var(--brand)">✗ nicht gefunden</span>`,doppelt:` <span class="muted">doppelt</span>`};
+  const cnt=(k,b)=>P.rows.filter(r=>r.id&&r.v[k]===b).length;
+  modal(`<h2>Präsenzkontrolle importieren</h2>
+    <h3 style="margin:10px 0 4px">Termine</h3><div style="display:grid;gap:4px">${P.ev.map((x,k)=>{const ok=x.e&&!x.future;
+      return`<label class="row small" style="flex-wrap:nowrap;gap:6px;align-items:flex-start"><input type="checkbox" class="prxev" data-k="${k}" ${ok&&(cnt(k,true)+cnt(k,false))?"checked":""} ${ok?"":"disabled"} style="flex:none;margin-top:3px">
+        <span><b>${dd(x.d)}</b> ${x.e?esc(x.e.titel):`<span style="color:var(--brand)">kein Termin an diesem Tag – übersprungen</span>`}${x.future?` <span class="muted">(Zukunft)</span>`:""}
+        <span class="muted"> · ${cnt(k,true)} da, ${cnt(k,false)} ab</span>${x.multi?` <span class="muted">· mehrere Termine, erster gewählt</span>`:""}${x.e&&x.e.erfasst?` <span style="color:#b26b00">· überschreibt ${x.e.erfasst} bisherige Einträge</span>`:""}</span></label>`}).join("")}</div>
+    <h3 style="margin:14px 0 4px">Sänger (${P.rows.filter(r=>r.id&&r.conf!=="doppelt").length} von ${P.rows.length} zugeordnet)</h3>
+    <div style="display:grid;gap:6px">${P.rows.map((r,i)=>`<div style="border-top:1px solid var(--line);padding-top:4px"><div class="small"><span class="muted">Tabelle:</span> ${esc(r.name)} ${esc(r.vorname)}${badge[r.conf]}</div>
+      <select class="input prxsel" data-i="${i}" style="padding:4px"><option value="">– nicht importieren –</option>${ppl.map(p=>`<option value="${p.id}" ${r.id===p.id&&r.conf!=="doppelt"?"selected":""}>${esc(p.name)} ${esc(p.vorname)}${p.stimme?" ("+esc(p.stimme)+")":""}</option>`).join("")}</select></div>`).join("")}</div>
+    <p class="small muted" style="margin:10px 0 0">Gespeichert werden nur Felder mit 1/x oder 0. Leere Felder und Sänger, die nicht in der Tabelle stehen, bleiben unverändert. Die Datei wird nicht gespeichert.</p>
+    <div id="prxres"></div>
+    <div class="row" style="margin-top:12px"><button class="btn primary" data-act="prxsave">Präsenzen speichern</button><button class="btn ghost" data-act="close">Abbrechen</button></div>`)}
+async function prxSave(){const P=PRX;if(!P)return;const map=new Map();
+  document.querySelectorAll(".prxsel").forEach(s=>{if(s.value&&!map.has(s.value))map.set(s.value,P.rows[+s.dataset.i])});
+  const ks=[...document.querySelectorAll(".prxev")].filter(c=>c.checked).map(c=>+c.dataset.k);
+  if(!ks.length)return toast("Kein Termin gewählt");if(!map.size)return toast("Niemand zugeordnet");
+  const btn=document.querySelector('[data-act="prxsave"]');if(btn)btn.disabled=true;const res=$("#prxres");let n=0,ev=0;
+  try{for(const k of ks){const rows=[...map].filter(([,r])=>r.v[k]!==null).map(([id,r])=>({id,praesent:r.v[k]}));if(!rows.length)continue;
+      if(res)res.innerHTML=`<p class="small">Speichere ${ev+1} von ${ks.length} …</p>`;
+      await rpc("chor_set_presence",{p_code:S.code,p_event:P.ev[k].e.id,p_rows:rows});n+=rows.length;ev++}}
+  catch(e){if(btn)btn.disabled=false;return toast(e.message)}
+  closeModal();PRX=null;statData=null;try{await load()}catch(_){}render();toast(`${ev} Termine, ${n} Präsenzen gespeichert`)}
+/* ---------- Geburtstage, Mobile, E-Mail aus Liste ergänzen (nur bestehende Sänger) ---------- */
+let KX=null;
+function kxParse(R){R=R.map(r=>(r||[]).map(v=>v==null?"":String(v).trim()));const h=x=>prN(x).replace(/[^a-z]/g,"");
+  let hi=-1,c={};
+  for(let i=0;i<Math.min(R.length,15);i++){const hd=R[i].map(h);const f=(...re)=>hd.findIndex(x=>re.some(r=>r.test(x)));
+    const n=hd.findIndex(x=>x==="name"||x==="nachname"),g=f(/^geb/,/^geburt/),m=f(/^mobil/,/^natel/,/^handy/),e=f(/^email$/,/^mail$/,/^emailadresse/);
+    if(n>=0&&(g>=0||m>=0||e>=0)){hi=i;c={n,v:hd.findIndex(x=>x==="vorname"),g,m,e};break}}
+  if(hi<0)return{err:"Keine Kopfzeile mit «Name» und «Geb.Dat.», «Mobile» oder «E-Mail» gefunden"};
+  const tel=v=>{v=v.replace(/\s+/g," ").trim();if(/^\d{9}$/.test(v))v="0"+v;if(/^0\d{9}$/.test(v))v=v.replace(/^(\d{3})(\d{3})(\d{2})(\d{2})$/,"$1 $2 $3 $4");if(/^41\d{9}$/.test(v))v="+"+v;return v};
+  const rows=[];
+  for(const r of R.slice(hi+1)){const name=r[c.n]||"";if(!name)continue;
+    const geb=c.g>=0?pDate(r[c.g]):"",mob=c.m>=0&&r[c.m]?tel(r[c.m]):"",mail=c.e>=0&&/@/.test(r[c.e]||"")?r[c.e].trim():"";
+    if(!geb&&!mob&&!mail)continue;rows.push({name,vorname:c.v>=0?r[c.v]||"":"",geb,mob,mail})}
+  if(!rows.length)return{err:"Keine Zeilen mit Geburtsdatum, Mobile oder E-Mail gefunden"};
+  return{rows,cols:{g:c.g>=0,m:c.m>=0,e:c.e>=0}}}
+function kxMatch(P){const ppl=S.members,used=new Set();
+  for(const r of P.rows){const tk=prT(r.name+" "+r.vorname);let b=null;for(const p of ppl){const x=prScore(tk,p);if(x&&x.sc>=.62&&(!b||x.sc>b.x.sc))b={p,x}}
+    if(!b){r.id=null;r.conf="fehlt";continue}
+    const twin=ppl.some(q=>q.id!==b.p.id&&prSim(prT(q.name).join(""),prT(b.p.name).join(""))>=.78);
+    r.id=b.p.id;r.conf=b.x.sV?(b.x.sc>=.85?"ok":"pruefen"):(twin?"pruefen":b.x.sc>=.76?"ok":"pruefen");if(used.has(b.p.id))r.conf="doppelt";used.add(b.p.id)}
+  return P}
+async function kxRead(f){try{const R=/\.xlsx?$/i.test(f.name)?await readXlsx(f):csvRows(await f.text());const P=kxParse(R);if(P.err)return toast(P.err);KX=kxMatch(P);kxShow()}
+  catch(e){toast(e.message)}}
+function kxShow(){const P=KX,dd=d=>{const[y,m,t]=d.split("-");return`${+t}.${+m}.${y}`};
+  const ppl=[...S.members].sort((a,b)=>(a.name||"").localeCompare(b.name||"","de")||(a.vorname||"").localeCompare(b.vorname||"","de"));
+  const badge={ok:"",pruefen:` <span style="color:#b26b00">⚠ prüfen</span>`,fehlt:` <span style="color:var(--brand)">✗ nicht in der App</span>`,doppelt:` <span class="muted">doppelt</span>`};
+  const appGeb=id=>{const m=S.members.find(x=>x.id===id);return m&&m.geb&&m.jg?`${m.jg}-${m.geb}`:""};
+  const info=r=>{const a=[];if(r.geb){const g=r.id&&appGeb(r.id);a.push(`🎂 ${dd(r.geb)}${g&&g!==r.geb?` <span style="color:#b26b00">(App: ${dd(g)})</span>`:g?` <span class="muted">(schon so)</span>`:""}`)}
+    if(r.mob)a.push(`📱 ${esc(r.mob)}`);if(r.mail)a.push(`✉️ ${esc(r.mail)}`);return a.join(" · ")};
+  const ok=P.rows.filter(r=>r.id&&r.conf!=="doppelt").length;
+  modal(`<h2>Geburtstage, Mobile, E-Mail</h2><p class="small muted" style="margin:0 0 8px"><b>${ok}</b> von ${P.rows.length} Zeilen einem Sänger zugeordnet. Personen, die nicht in der App sind (z.B. Ehren- oder Freimitglieder), werden übersprungen.</p>
+    <div style="display:grid;gap:6px">${P.rows.map((r,i)=>`<div style="border-top:1px solid var(--line);padding-top:4px"><div class="small"><span class="muted">Liste:</span> ${esc(r.name)} ${esc(r.vorname)}${badge[r.conf]}</div><div class="small" style="margin:2px 0 4px">${info(r)}</div>
+      <select class="input kxsel" data-i="${i}" style="padding:4px"><option value="">– nicht übernehmen –</option>${ppl.map(p=>`<option value="${p.id}" ${r.id===p.id&&r.conf!=="doppelt"?"selected":""}>${esc(p.name)} ${esc(p.vorname)}${p.stimme?" ("+esc(p.stimme)+")":""}</option>`).join("")}</select></div>`).join("")}</div>
+    <div class="card soft small" style="margin-top:12px"><b>Übernehmen:</b>
+      ${P.cols.g?`<label class="row" style="flex-wrap:nowrap;gap:6px"><input type="checkbox" id="kxg" checked style="flex:none"> Geburtsdatum</label>`:""}
+      ${P.cols.m?`<label class="row" style="flex-wrap:nowrap;gap:6px"><input type="checkbox" id="kxm" checked style="flex:none"> Mobile</label>`:""}
+      ${P.cols.e?`<label class="row" style="flex-wrap:nowrap;gap:6px"><input type="checkbox" id="kxe" checked style="flex:none"> E-Mail</label>`:""}
+      <label class="row" style="flex-wrap:nowrap;gap:6px;margin-top:6px"><input type="checkbox" id="kxo" style="flex:none"> bestehende Angaben in der App überschreiben</label>
+      <p class="muted" style="margin:4px 0 0">Ohne dieses Häkchen werden nur leere Felder ergänzt. Die Datei wird nicht gespeichert.</p></div>
+    <div class="row" style="margin-top:12px"><button class="btn primary" data-act="kxsave">Speichern</button><button class="btn ghost" data-act="close">Abbrechen</button></div>`)}
+async function kxSave(){const P=KX;if(!P)return;const on=id=>!!$(id)?.checked,g=on("#kxg"),m=on("#kxm"),e=on("#kxe"),o=on("#kxo");
+  if(!g&&!m&&!e)return toast("Nichts zum Übernehmen gewählt");const map=new Map();
+  document.querySelectorAll(".kxsel").forEach(s=>{if(s.value&&!map.has(s.value))map.set(s.value,P.rows[+s.dataset.i])});
+  const rows=[...map].map(([id,r])=>({id,geburtsdatum:g?r.geb||null:null,telefon:m?r.mob||null:null,email:e?r.mail||null:null})).filter(x=>x.geburtsdatum||x.telefon||x.email);
+  if(!rows.length)return toast("Niemand zugeordnet");
+  try{const j=await rpc("chor_kontakt_set",{p_code:S.code,p_rows:rows,p_ueberschreiben:o});closeModal();KX=null;try{await load()}catch(_){}render();toast(`${j.geaendert} Sänger ergänzt`)}
+  catch(err){toast(err.message)}}
 /* ---------- Präsenz aus Liste (Text aus Foto, z.B. iPhone Live Text) ---------- */
 const prN=x=>String(x||"").toLowerCase().replace(/ß/g,"ss").replace(/ä/g,"a").replace(/ö/g,"o").replace(/ü/g,"u").normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/ae/g,"a").replace(/oe/g,"o").replace(/ue/g,"u");
 const prT=x=>prN(x).split(/[^a-z]+/).filter(Boolean);
@@ -1098,6 +1200,10 @@ function vVerwaltung(){if(!isV())return`<p class="muted">Nur für den ${VS()==="
     <input type="file" id="impfile" accept=".csv,.xlsx,.xls,text/csv" class="input"><label class="row small" style="margin-top:6px;display:none"><input type="checkbox" id="impnur"> Bei Access-Daten: nur aktive Sänger (ohne Haken werden auch frühere Sänger mit ihrer History übernommen – als «ehemalig»)</label><label class="row small" style="margin-top:4px;display:none"><input type="checkbox" id="impfun" checked> Bei Access-Daten: Funktionen aus «Geschichte» nach Vorstand &amp; Chargen übernehmen (alle, auch Ehemalige)</label>${S.busy?`<div class="note" style="margin-top:8px">⏳ ${esc(S.busy)}</div>`:""}${S.impInfo?`<div class="okmsg" style="margin-top:8px">${esc(S.impInfo)}</div>`:""}</div>
   <div class="card"${isVet()?" hidden":""}><h3>Teilnahmen aus SpielerPlus</h3><p class="small muted">Statistik-Export aus SpielerPlus (CSV) hochladen. Die Zu- und Absagen werden den Terminen am gleichen Datum zugeordnet. Fehlt ein Termin, wird er angelegt; gibt es an dem Tag genau einen anderen Termin, wird dessen Titel übernommen. Mehrfaches Importieren ist kein Problem.</p>
     <input type="file" id="spfile" accept=".csv,text/csv" class="input">${S.spInfo?`<div class="okmsg" style="margin-top:8px">${S.spInfo}</div>`:""}</div>
+  <div class="card"><h3>📊 Präsenzkontrolle importieren</h3><p class="small muted">Excel- oder CSV-Tabelle mit einer Zeile pro Sänger (Name, Vorname) und einer Spalte pro Termin. Das Datum steht oben in den Zeilen «Tag», «Monat», «Jahr» oder als Datum in einer Kopfzeile. 1 bzw. x = anwesend, 0 = abwesend, leer = nicht erfasst. Die Spalten werden den Terminen am gleichen Tag zugeordnet; vor dem Speichern siehst du eine Vorschau. Mehrfaches Importieren ist kein Problem.</p>
+    <input type="file" id="prxfile" accept=".xlsx,.xls,.csv,text/csv" class="input"></div>
+  <div class="card"><h3>🎂 Geburtstage, Mobile, E-Mail ergänzen</h3><p class="small muted">Adress- oder Geburtstagsliste (Excel/CSV) hochladen. Erkannt werden die Spalten <code>Name</code>, <code>Vorname</code>, <code>Geb.Dat.</code>/<code>Geburtsdatum</code>, <code>Mobile</code>/<code>Natel</code> und <code>E-Mail</code>; die Kopfzeile darf auch weiter unten stehen. Es werden nur bereits erfasste Sänger ergänzt, niemand wird neu angelegt. Vor dem Speichern siehst du eine Vorschau.</p>
+    <input type="file" id="kxfile" accept=".xlsx,.xls,.csv,text/csv" class="input"></div>
   <div class="card soft small"><b>Datenschutz:</b> Adressen, Telefon und Geburtsjahr sehen nur die Person selbst und der Vorstand. Alle Aktiven sehen Name, Stimme und Geburtstag (Tag/Monat).</div>`}
 
 /* ---------- CSV-Import ---------- */
@@ -1364,7 +1470,7 @@ const A={
     const dp=!d.id&&$("#dopush")?.checked,ttl=v("#fti"),st=v("#fs"),wk=d.id?0:+($("#fw")?.value||0);closeModal();call("chor_save_event",{p_id:d.id||null,p_typ:v("#ft"),p_titel:v("#fti"),p_start:dt(v("#fs")),p_ende:dt(v("#fe")),p_ort:v("#fo"),p_info:v("#fi"),p_anmeldeschluss:dt(v("#fa")),p_zaehlt:$("#fz").checked,p_wochen:wk,p_eintreffen:v("#fin")?dt(v("#fs").slice(0,11)+v("#fin")):null},"Termin gespeichert").then(()=>{if(dp)autoPush(wk?"📅 Neue Termine":"📅 Neuer Termin",`${ttl} – ${fDate(st)}, ${fTime(st)} Uhr${wk?` (und ${wk} weitere Wochen)`:""}`,"./#/termine")}).catch(()=>{})},
   evaction:d=>{const t={absagen:"Termin absagen?",reaktivieren:"Termin wieder aktivieren?",loeschen:"Termin endgültig löschen (inkl. Rückmeldungen)?",serie_loeschen:"Alle künftigen Termine dieser Serie löschen?"}[d.a];if(!confirm(t))return;
     const ev=S.events.find(e=>e.id===d.id);call("chor_event_action",{p_id:d.id,p_action:d.a},"Erledigt").then(()=>{if(d.a==="absagen"&&ev&&D(ev.start)>new Date()&&confirm("Absage als Push-Nachricht an alle senden?"))autoPush("❌ Abgesagt: "+ev.titel,`${fDate(ev.start)}, ${fTime(ev.start)} Uhr fällt aus.`,"./#/termin/"+ev.id);if(/loeschen/.test(d.a))go("termine")}).catch(()=>{})},
-  prlist:d=>prListForm(d.id),prmatch:()=>prListCheck(),prlback:()=>prListForm(PRL.id),prlsave:()=>prListSave(),
+  prlist:d=>prListForm(d.id),prmatch:()=>prListCheck(),prlback:()=>prListForm(PRL.id),prlsave:()=>prListSave(),prxsave:()=>prxSave(),kxsave:()=>kxSave(),
   preall:()=>{document.querySelectorAll(".prchk").forEach(c=>{const p=evPeople.find(x=>x.id===c.dataset.id);c.checked=p&&p.status==="ja"})},
   presave:d=>{const rows=[...document.querySelectorAll(".prchk")].map(c=>({id:c.dataset.id,praesent:c.checked}));call("chor_set_presence",{p_event:d.id,p_rows:rows},"Präsenz gespeichert").catch(()=>{})},
   send:()=>{const t=$("#msg").value.trim();if(!t)return;const info=$("#asinfo")?.checked;call("chor_post",{p_kind:info?"info":"chat",p_text:t},info?"Ankündigung veröffentlicht":null).then(()=>{if(info)autoPush("📢 Ankündigung",t.slice(0,200),"./#/chat")}).catch(()=>{})},
@@ -1443,6 +1549,8 @@ document.addEventListener("change",e=>{const el=e.target;
   if(el.dataset.chg==="plsel"){if(!PL.sel)PL.sel=new Set();if(el.checked)PL.sel.add(el.dataset.id);else PL.sel.delete(el.dataset.id);plSave();const b=document.querySelector('[data-act="plstart"]');if(b)b.textContent=`▶ ${plCandidates().filter(x=>PL.sel.has(x.id)).length} Aufnahmen abspielen`;return}
   if(el.dataset.chg==="plyear"){PL.year=el.value;PL.sel=null;plSave();render();return}
   if(el.dataset.chg==="plscope"){PL.scope=el.value;PL.sel=null;plSave();render();return}
+  if(el.id==="kxfile"&&el.files[0]){kxRead(el.files[0]);el.value=""}
+  if(el.id==="prxfile"&&el.files[0]){prxRead(el.files[0]);el.value=""}
   if(el.id==="spfile"&&el.files[0]){const r=new FileReader();r.onload=()=>doSpImport(String(r.result));r.readAsText(el.files[0],"utf-8")}
   if(el.id==="impfile"&&el.files[0]){const f=el.files[0];if(/\.xlsx?$/i.test(f.name)){readXlsx(f).then(doImport).catch(e=>toast(e.message))}else{const r=new FileReader();r.onload=()=>doImport(String(r.result));r.readAsText(f,"utf-8")}}
   if(el.dataset.chg==="sjahr"){S.statJahr=+el.value;render()}
