@@ -327,7 +327,7 @@ const LOGO0="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvM
 /* ================= Chor-Plattform (White-Label der Chor-App) =================
    Ein Chor = ein Mandant. Branding (Name, Logo, Farbe) kommt aus der Datenbank (cp.tenants).
    Daten im abgeschotteten Bereich «cp» (Zeilenschutz pro Mandant), Zugriff nur über cp_-Funktionen mit dem persönlichen Code. */
-const APP_VERSION="1.6"; /* bei jeder Änderung erhöhen */
+const APP_VERSION="1.7"; /* bei jeder Änderung erhöhen */
 const SUPA={url:"https://tvygwnawrkxdhzghxgfv.supabase.co",key:"sb_publishable_yO40Pv19n6Wq0Wh769VZCg_q9BRTBvd"};
 const FILES_FN=SUPA.url+"/functions/v1/cp-files";
 const PUSH_FN=SUPA.url+"/functions/v1/cp-push",VAPID_PUBLIC="BNWkxTW3k3B7aTQY4r7nJ5VxkPL57BxlhuReulrRmmi8KPKTEZeYG52AFhSLN5o5Gs-Lhr5fqoMqBqqpBMyywEo";
@@ -434,6 +434,7 @@ function vStart(){
   const infos=S.posts.filter(p=>p.kind==="info").sort((a,b)=>(b.pinned-a.pinned)||D(b.created_at)-D(a.created_at)).slice(0,3);
   const next=evFuture().slice(0,3);
   let h=`<section class="hero" style="margin-bottom:14px"><h1 style="margin:0">Grüessech ${esc(me.vorname)}</h1><p class="muted" style="margin:4px 0 0">${me.stimme?esc(me.stimme)+" · ":""}${isV()?(S.me.ok?"Supervisor":VS())+" · ":""}${chorName()}</p></section>`;
+  if(T.bild_v){h+=`<div id="stbild" style="margin:0 0 14px;border-radius:16px;overflow:hidden;background:var(--brand-soft,#eee);aspect-ratio:4/3"></div>`;setTimeout(loadStartbild,0)}
   if(myBday)h+=`<div class="card brand"><h2 style="margin:0 0 6px">🎂 Alles Gute zum Geburtstag!</h2><p style="margin:0">${S.congratsMe.length?`${S.congratsMe.length} Gratulation${S.congratsMe.length>1?"en":""}: `+S.congratsMe.map(c=>esc(c.from)).join(", "):"Der ganze Chor wünscht dir einen schönen Tag."}</p></div>`;
   if(today.filter(b=>b.m.id!==me.id).length||soon.length||late.length)h+=`<div class="card"><div class="row between"><h3 style="margin:0">Geburtstage</h3><a href="#/geburtstage" class="small">alle</a></div><div class="list">${[...today.filter(b=>b.m.id!==me.id),...late,...soon.slice(0,4)].map(bdayRow).join("")}</div></div>`;
   const sick=(S.absences||[]).find(a=>a.person_id===me.id&&a.art==="krank"&&!a.bis);
@@ -647,6 +648,16 @@ async function prListSave(){const ids=new Set([...document.querySelectorAll(".pr
   const rows=evPeople.map(p=>({id:p.id,praesent:ids.has(p.id)?true:abs?false:cur(p.id)}));
   try{await rpc("chor_set_presence",{p_code:S.code,p_event:PRL.id,p_rows:rows})}catch(e){return toast(e.message)}
   closeModal();toast(`Präsenz gespeichert: ${ids.size} anwesend`);statData=null;PRL=null;try{await load()}catch(_){}render()}
+/* ---------- Startbild (Gruppenfoto auf der Startseite) – nur nach Anmeldung, lokal zwischengespeichert ---------- */
+let STB=null;
+function imgJpg(file,max,q){return new Promise((ok,no)=>{const fr=new FileReader();fr.onerror=()=>no(new Error("Bild konnte nicht gelesen werden"));fr.onload=()=>{const im=new Image();im.onerror=()=>no(new Error("Kein gültiges Bild"));
+  im.onload=()=>{let m=max,u="";for(let i=0;i<4;i++){const k=Math.min(1,m/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);
+    const g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,c.width,c.height);g.drawImage(im,0,0,c.width,c.height);u=c.toDataURL("image/jpeg",q);if(u.length<=850000)break;m=Math.round(m*.8)}ok(u)};im.src=fr.result};fr.readAsDataURL(file)})}
+async function loadStartbild(){const el=$("#stbild"),pv=$("#tsbprev");if(!T.bild_v)return;
+  if(!STB||STB.v!==T.bild_v){try{const c=JSON.parse(store.get("startbild")||"null");if(c&&c.v===T.bild_v)STB=c}catch(e){}}
+  if(!STB||STB.v!==T.bild_v){try{const r=await rpc("tenant_bild",{p_code:S.code});if(!r||!r.bild)return;STB={v:r.v,bild:r.bild};store.set("startbild",JSON.stringify(STB))}catch(e){return}}
+  const img=`<img src="${STB.bild}" alt="${esc(T.name||"Chor")}" style="width:100%;height:100%;object-fit:cover;display:block">`;
+  const a=$("#stbild");if(a){a.innerHTML=img;a.style.aspectRatio="auto";a.querySelector("img").style.height="auto"}const b=$("#tsbprev");if(b)b.src=STB.bild}
 /* ---------- Terminserien: wöchentlich oder monatlich am n. Wochentag (wie cp_chor_save_event) ---------- */
 const WTAG=["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
 function serDates(start,rh,k){const s=new Date(start);if(isNaN(s))return[];const out=[],nth=Math.ceil(s.getDate()/7),dow=s.getDay();
@@ -1188,7 +1199,7 @@ async function loadStat(){const el=$("#stat");if(!el)return;
     <div class="card scroll" style="padding:6px 10px"><table class="t"><tr><th>Name</th><th>Präsenz</th><th>%</th><th>✓</th><th>✗</th><th>?</th><th>–</th></tr>${rs.map(r=>{const q=Math.round(r.praesent/Math.max(1,r.total)*100);
       return`<tr><td>${esc(r.name)} ${esc(r.vorname)}<div class="small muted">${esc(r.stimme||"")}</div></td><td>${r.praesent}/${r.total}<div class="bar" style="width:70px"><i style="width:${q}%"></i></div></td><td><b>${q}</b></td><td>${r.ja}</td><td>${r.nein}</td><td>${r.vielleicht}</td><td>${r.offen}</td></tr>`}).join("")}</table></div>
     ${isL()?`<button class="btn sm" data-act="statcsv">Als CSV herunterladen</button>`:""}`}
-function vVerwaltung(){if(!isV())return`<p class="muted">Nur für den ${VS()==="Vorstand"?"Vorstand":"die Obmannschaft"}.</p>`;
+function vVerwaltung(){if(!isV())return`<p class="muted">Nur für den ${VS()==="Vorstand"?"Vorstand":"die Obmannschaft"}.</p>`;if(T.bild_v)setTimeout(loadStartbild,0);
   return`<button class="btn ghost sm" data-act="go" data-r="mehr" style="margin-bottom:10px">← Mehr</button><h1>Verwaltung${isVet()?" Veteranen":""}</h1>
   <div class="card"><h3>🔑 Codes &amp; Links</h3><p class="small muted">Jeder Sänger meldet sich mit seinem persönlichen Link an (enthält den Code). Fehlende Codes werden hier erzeugt.</p>
     <div class="row" style="flex-wrap:wrap;gap:6px"><button class="btn sm primary" data-act="cpcodes">Codes erzeugen &amp; Links anzeigen</button>${S.codes?`<button class="btn sm" data-act="cpcsv">Liste als CSV</button><button class="btn sm" data-act="cpmail">Links per E-Mail senden …</button>`:""}</div>
@@ -1200,6 +1211,8 @@ function vVerwaltung(){if(!isV())return`<p class="muted">Nur für den ${VS()==="
     <label class="small muted">Name des Chors</label><input id="tsn" class="input" value="${esc(T.name||"")}">
     <label class="small muted">Kurzname (App-Titel)</label><input id="tsk" class="input" value="${esc(T.kurz||"")}">
     <label class="small muted">Logo (PNG/JPG, wird verkleinert)</label><div class="row" style="gap:8px"><img class="tlogo" src="${LOGO}" alt="" style="height:44px;max-width:120px;object-fit:contain;background:#fff;border-radius:6px"><input id="tsl" type="file" accept="image/png,image/jpeg,image/webp" class="input" style="flex:1"></div>
+    <label class="small muted">Startbild (Foto oben auf der Startseite, nur für angemeldete Sänger sichtbar; wird verkleinert)</label><div class="row" style="gap:8px">${T.bild_v?`<img id="tsbprev" alt="" style="height:44px;width:72px;object-fit:cover;border-radius:6px;background:var(--line)">`:""}<input id="tsb" type="file" accept="image/jpeg,image/png,image/webp" class="input" style="flex:1"></div>
+    ${T.bild_v?`<label class="row small" style="flex-wrap:nowrap;gap:6px"><input type="checkbox" id="tsbx" style="flex:none"> Startbild entfernen</label>`:""}
     <label class="small muted">Farbe</label><input id="tsf" type="color" class="input" value="${esc(T.farbe||"#1f4e79")}" style="height:40px;padding:2px">
     <label class="small muted">Probelokal</label><input id="tso" class="input" value="${esc(T.ort||"")}">
     <label class="small muted">Probezeit (z.B. Montag 19:45)</label><input id="tsp" class="input" value="${esc(T.probe||"")}">
@@ -1456,6 +1469,7 @@ const A={
     try{await rpc("chor_import",{p_code:S.code,p_rows:[{vorname:v,name:n,stimme:$("#nss").value||undefined,email:$("#nse").value.trim()||undefined,aktiv:true}]});await load();S.codes=null;render();toast(`${v} ${n} erfasst – jetzt Code erzeugen`)}catch(e){toast(e.message)}},
   cptsave:async()=>{const data={name:$("#tsn").value,kurz:$("#tsk").value,farbe:$("#tsf").value,ort:$("#tso").value,probe:$("#tsp").value,stimmen:$("#tss").value.split(",").map(x=>x.trim()).filter(Boolean)};
     const f=$("#tsl").files[0];if(f)try{data.logo=await imgSmall(f,320)}catch(e){return toast(e.message)}
+    const fb=$("#tsb")?.files[0];if(fb)try{data.startbild=await imgJpg(fb,1400,.82)}catch(e){return toast(e.message)}else if($("#tsbx")?.checked)data.startbild="";
     try{const t=await rpc("tenant_save",{p_code:S.code,p_data:data});applyTenant(t);render();toast("Gespeichert")}catch(e){toast(e.message)}},
   cpmename:async()=>{try{await rpc("me_name",{p_code:S.code,p_vorname:$("#mnv").value,p_name:$("#mnn").value});await load();render();toast("Name gespeichert")}catch(e){toast(e.message)}},
   printbrief:d=>printBrief(d.n),
@@ -1484,7 +1498,7 @@ const A={
   chorsw:async()=>{if(!(S.chors&&S.chors.mc&&S.chors.vet))return;S.chor=isVet()?"mc":"vet";store.set("chor_ctx",S.chor);try{sessionStorage.setItem(SK+"chor_sel",S.chor)}catch(e){}S.urls={};S.gTab=null;S.lastPost=null;
     try{const u=new URL(location.href);u.searchParams.delete("chor");u.hash="#/start";history.replaceState(null,"",u.toString())}catch(e){}
     $("#app").innerHTML=`<p class="muted" style="text-align:center;margin-top:60px">Lade ${chorName()} …</p>`;try{await load();render();toast(chorName())}catch(e){toast(e.message);S.chor=isVet()?"mc":"vet";hdrChor()}},
-  logout:()=>{store.set("chor_code",null);store.set("chor_ctx",null);try{sessionStorage.removeItem(SK+"chor_sel")}catch(e){}S.chors=null;S.chor="mc";hdrChor();S.me=null;S.code=null;clearInterval(pollT);location.hash="";vLogin()},
+  logout:()=>{store.set("chor_code",null);store.set("startbild",null);STB=null;store.set("chor_ctx",null);try{sessionStorage.removeItem(SK+"chor_sel")}catch(e){}S.chors=null;S.chor="mc";hdrChor();S.me=null;S.code=null;clearInterval(pollT);location.hash="";vLogin()},
   tfilter:d=>{S.tFilter=d.k;render()},tpast:d=>{S.tPast=d.v==="1";render()},mfilter:d=>{S.mFilter=d.k;render()},
   rsvp:d=>{const e=S.events.find(x=>x.id===d.id);if(e&&e.my===d.s)return call("chor_set_attendance",{p_event:d.id,p_status:null,p_grund:null},"Rückmeldung entfernt").catch(()=>{});
     if(d.s==="nein")return modal(`<h2>Abmelden</h2><p class="small muted">Grund (optional, sieht nur der Vorstand):</p><input id="grund" class="input" placeholder="z.B. Ferien, krank, Geschäft"><p class="small" style="margin:8px 0 0">Länger krank oder in den Ferien? <a href="#/abwesenheit" data-act="go" data-r="abwesenheit">Abwesenheit melden</a> – dann gilt es für alle Termine im Zeitraum.</p><div class="row" style="margin-top:12px"><button class="btn primary" data-act="rsvpno" data-id="${d.id}">Abmelden</button><button class="btn ghost" data-act="close">Abbrechen</button></div>`);
