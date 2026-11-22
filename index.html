@@ -316,7 +316,7 @@ const LOGO="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANAAAABpCAYAAABLYa3JAA
 /* ================= MCT Chor-App =================
    Für die aktiven Sänger des Männerchors Thun. Daten in Supabase (gleiche Datenbank wie die Herrenabend-App),
    Zugriff nur über geprüfte Funktionen mit dem persönlichen Code. Dateien im privaten Speicher «chor». */
-const APP_VERSION="3.22"; /* bei jeder Änderung erhöhen */
+const APP_VERSION="3.23"; /* bei jeder Änderung erhöhen */
 const SUPA={url:"https://tvygwnawrkxdhzghxgfv.supabase.co",key:"sb_publishable_yO40Pv19n6Wq0Wh769VZCg_q9BRTBvd"};
 const FILES_FN=SUPA.url+"/functions/v1/chor-files";
 const PUSH_FN=SUPA.url+"/functions/v1/chor-push",VAPID_PUBLIC="BNWkxTW3k3B7aTQY4r7nJ5VxkPL57BxlhuReulrRmmi8KPKTEZeYG52AFhSLN5o5Gs-Lhr5fqoMqBqqpBMyywEo";
@@ -376,6 +376,7 @@ function personalManifest(code,vname){try{if(!code)return;const l=document.query
   l.setAttribute("href","data:application/manifest+json,"+encodeURIComponent(JSON.stringify(m)))}catch(e){}}
 async function load(){
   const s=await rpc("chor_session",{p_code:S.code});personalManifest(S.code,s.me&&s.me.vorname);S.chors=s.chors||S.chors;hdrChor();
+  grList().then(()=>{if(route()[0]==="mehr")render()});
   S.me=s.me;S.members=s.members;S.events=s.events;S.posts=s.posts;S.files=s.files;S.board=(s.board||[]).map(b=>({...b,funktion:normF(b.funktion)}));S.congratsMe=s.congrats_me;S.congratsGiven=s.congrats_given;S.polls=s.polls||[];S.absences=s.absences||[];S.pollSel=S.pollSel||{};
   S.lastPost=S.posts.length?S.posts[S.posts.length-1].created_at:new Date(0).toISOString();
 }
@@ -769,7 +770,7 @@ function vDieseApp(){return`<button class="btn ghost sm" data-act="go" data-r="m
   <div class="card soft small"><b>Gut zu wissen:</b> läuft auf jedem Handy und Computer, ohne App-Store · Daten auf Servern in der Schweiz (Zürich) · Zugang nur mit persönlichem Code · keine Lizenzkosten für die Grundtechnik</div>
   <div class="card" style="border-color:var(--brand);text-align:center"><p style="margin:0 0 10px">Fragen, Demo oder Offerte? Wir zeigen euch die App gerne.</p><a class="btn primary" href="mailto:praesident@mcthun.com?subject=Interesse%20an%20der%20Vereins-App%20des%20M%C3%A4nnerchors%20Thun">✉️ Kontakt aufnehmen</a><p class="small muted" style="margin:10px 0 0">Männerchor Thun 1829 · praesident@mcthun.com</p></div>`}
 function vMehr(){const t=(r,ic,l,d)=>`<button class="tile" data-act="go" data-r="${r}"><span class="ic">${ic}</span><b>${l}</b><span>${d}</span></button>`;
-  return`<h1>Mehr</h1><div class="tiles">${t("push","🔔","Mitteilungen","Push aufs Handy")}${t("dieseapp","📱","Diese App","für andere Vereine")}${t("stamm/"+S.me.id,"🪪","Mein Stammblatt","Daten & History")}${t("mitglieder","👥","Sänger","nach Stimmen")}${t("geburtstage","🎂","Geburtstage","mit Gratulation")}${t("statistik","📊","Präsenz","Statistik")}${t("kalender","📅","Kalender-Abo","Outlook, iPhone, Google")}${t("umfragen","🗳️","Umfragen",(S.polls||[]).filter(p=>pollOpen(p)&&!(p.mine&&p.mine.length)).length?"offen: "+(S.polls||[]).filter(p=>pollOpen(p)&&!(p.mine&&p.mine.length)).length:"abstimmen")}${t("abwesenheit","🤒","Krank & abwesend","melden")}<button class="tile" data-act="toha"><span class="ic">🎩</span><b>Herrenabend-App</b><span>195. Herrenabend</span></button>${(isVet()?t("vorstand","🏛️","Obmannschaft","Funktionen & History"):t("vorstand","🏛️","Vorstand & Chargen","Funktionen & History"))}${isV()&&!isVet()?t("ehrungen","🏅","Ehrungen","Veteranen-Ernennungen"):""}${isV()?t("mail","✉️","E-Mail","an alle oder einzelne"):""}${isV()?t("verwaltung","⚙️","Verwaltung","Mitglieder & Import"):""}</div>
+  return`<h1>Mehr</h1><div class="tiles">${t("push","🔔","Mitteilungen","Push aufs Handy")}${t("dieseapp","📱","Diese App","für andere Vereine")}${t("stamm/"+S.me.id,"🪪","Mein Stammblatt","Daten & History")}${t("mitglieder","👥","Sänger","nach Stimmen")}${t("geburtstage","🎂","Geburtstage","mit Gratulation")}${t("statistik","📊","Präsenz","Statistik")}${t("kalender","📅","Kalender-Abo","Outlook, iPhone, Google")}${t("umfragen","🗳️","Umfragen",(S.polls||[]).filter(p=>pollOpen(p)&&!(p.mine&&p.mine.length)).length?"offen: "+(S.polls||[]).filter(p=>pollOpen(p)&&!(p.mine&&p.mine.length)).length:"abstimmen")}${t("abwesenheit","🤒","Krank & abwesend","melden")}<button class="tile" data-act="toha"><span class="ic">🎩</span><b>Herrenabend-App</b><span>195. Herrenabend</span></button>${(isVet()?t("vorstand","🏛️","Obmannschaft","Funktionen & History"):t("vorstand","🏛️","Vorstand & Chargen","Funktionen & History"))}${isV()&&!isVet()?t("ehrungen","🏅","Ehrungen","Veteranen-Ernennungen"):""}${(S.gremien||[]).length?t("gremien","🗂️","Gremien",S.gremien.map(x=>x.g==="muko"?"MUKO":x.name.split(" ")[0]).join(" · ")):""}${isV()?t("mail","✉️","E-Mail","an alle oder einzelne"):""}${isV()?t("verwaltung","⚙️","Verwaltung","Mitglieder & Import"):""}</div>
   <div class="card soft small" style="margin-top:14px">Angemeldet als <b>${esc(full(S.me))}</b>${isV()?" ("+(S.me.ok?"Supervisor – beide Chöre":VS())+")":""} · ${chorName()}${S.chors&&S.chors.mc&&S.chors.vet?` · <a href="#" data-act="chorsw">${isVet()?"zum Männerchor":"zu den Veteranen"} wechseln</a>`:""}. <a href="#" data-act="logout">Abmelden</a><br><span class="muted">Chor-App Version ${APP_VERSION}</span></div>`}
 function vMitglieder(){const act=S.members.filter(m=>m.aktiv);
   let h=`<button class="btn ghost sm" data-act="go" data-r="mehr" style="margin-bottom:10px">← Mehr</button><div class="row between"><h1 style="margin:0">Sänger</h1>${PBTN}</div><p class="muted">${act.length} aktive Sänger${isVet()?" bei den Veteranen":""}</p>`;
@@ -942,7 +943,7 @@ function vAhnen(f){f=decodeURIComponent(f||"");const all=[...new Set(S.board.map
     <p class="small muted">Erfasst sind die in der Chor-App eingetragenen Amtszeiten. Frühere Amtsträger ergänzt der Vorstand unter «Vorstand & Chargen».</p>`;
   return h}
 function vVorstand(){const y=new Date().getFullYear(),g=gTabCur(),bs=S.board.filter(b=>(b.gremium||"vorstand")===g),cur=bs.filter(b=>!b.bis||b.bis>=y),old=bs.filter(b=>b.bis&&b.bis<y);
-  const line=b=>`<div class="li" style="cursor:default"><div class="grow"><div class="nm">${esc(b.funktion)}</div><div class="sub">${esc(b.name||"")} · ${b.von}–${b.bis||"heute"}${b.vplus?" · <b>Vorstand+</b>":""}</div></div>${isV()&&!isVet()&&b.gremium==="charge"&&b.person_id&&(!b.bis||b.bis>=y)?`<label class="small row" style="gap:4px;flex:none" title="Im Verteiler «Vorstand+» für Mitteilungen und E-Mail"><input type="checkbox" data-chg="vplus" data-id="${b.id}" ${b.vplus?"checked":""}> V+</label>`:""}${isV()?`<button class="btn sm ghost" data-act="bedit" data-id="${b.id}">Bearbeiten</button>`:""}</div>`;
+  const line=b=>`<div class="li" style="cursor:default"><div class="grow"><div class="nm">${esc(b.funktion)}</div><div class="sub">${esc(b.name||"")} · ${b.von}–${b.bis||"heute"}${b.vplus?" · <b>Vorstand+</b>":""}</div></div>${isV()&&!isVet()&&b.gremium==="charge"&&b.person_id&&(!b.bis||b.bis>=y)?`<label class="small row" style="gap:4px;flex:none" title="Im Verteiler «Vorstand+» für Mitteilungen und E-Mail"><input type="checkbox" data-chg="vplus" data-id="${b.id}" ${b.vplus?"checked":""}> V+</label>`:""}${isV()&&!isVet()&&b.person_id&&(!b.bis||b.bis>=y)?`<label class="small row" style="gap:4px;flex:none" title="Mitglied der Musikkommission (Zugang zum MUKO-Bereich)"><input type="checkbox" data-chg="muko" data-id="${b.id}" ${b.muko?"checked":""}> MUKO</label>`:""}${isV()?`<button class="btn sm ghost" data-act="bedit" data-id="${b.id}">Bearbeiten</button>`:""}</div>`;
   let h=`<button class="btn ghost sm" data-act="go" data-r="mehr" style="margin-bottom:10px">← Mehr</button><div class="row between"><h1 style="margin:0">${isVet()?"Obmannschaft Veteranen":"Vereinsfunktionen"}</h1>${isV()?`<div class="row"><button class="btn sm" data-act="go" data-r="funktionen">Nach Funktion</button><button class="btn sm" data-act="bbulk">Liste einfügen</button><button class="btn sm primary" data-act="bnew">+ Funktion</button></div>`:""}</div>
     ${isV()?"":`<button class="btn sm" data-act="go" data-r="funktionen" style="margin-top:10px">Übersicht nach Funktion</button>`}
     <div class="filter" style="margin-top:10px">${Object.entries(GREM()).map(([k,l])=>`<button class="chip ${g===k?"on":""}" data-act="gtab" data-g="${k}">${l}</button>`).join("")}</div>
@@ -1108,7 +1109,7 @@ async function doImport(txt){const b=buildImport(txt);if(b.err)return toast(b.er
 /* ---------- Navigation ---------- */
 const ICONS={start:'<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',termine:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',chat:'<path d="M4 5h16v11H8l-4 4z"/>',material:'<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',mehr:'<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>'};
 const TABS=[["start","Start"],["termine","Termine"],["chat","Chat"],["material","Noten"],["mehr","Mehr"]];
-function renderTabs(){const r=route()[0],cur={termin:"termine",mitglieder:"mehr",ehemalige:"mehr",funktionen:"mehr",ahnen:"mehr",kalender:"mehr",ehrungen:"mehr",umfragen:"mehr",abwesenheit:"mehr",blatt:"termine",geburtstage:"mehr",stamm:"mehr",vorstand:"mehr",statistik:"mehr",verwaltung:"mehr"}[r]||r;
+function renderTabs(){const r=route()[0],cur={termin:"termine",mitglieder:"mehr",ehemalige:"mehr",funktionen:"mehr",ahnen:"mehr",kalender:"mehr",ehrungen:"mehr",umfragen:"mehr",abwesenheit:"mehr",blatt:"termine",geburtstage:"mehr",stamm:"mehr",vorstand:"mehr",statistik:"mehr",verwaltung:"mehr",gremien:"mehr",gremium:"mehr",gsitz:"mehr",gein:"mehr",gprot:"mehr",mail:"mehr"}[r]||r;
   $("#tabs").innerHTML=TABS.map(([k,l])=>`<button class="${cur===k?"on":""}" data-act="go" data-r="${k}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONS[k]}</svg>${l}${k==="chat"&&S.unread?`<span class="badge">${S.unread}</span>`:""}</button>`).join("")}
 const route=()=>(location.hash.replace(/^#\/?/,"")||"start").split("/");
 function go(r){location.hash="#/"+r}
@@ -1119,7 +1120,7 @@ function vChooser(){$("#tabs").hidden=true;$("#app").innerHTML=`<div class="choo
 function render(){if(!S.me){vLogin();return}
   let picked=false;try{picked=sessionStorage.getItem("chor_pick")==="1"}catch(e){picked=true}
   if(!picked&&store.get("chor_nopick")!=="1"&&!location.hash.replace(/^#\/?/,"")){vChooser();return}
-  const[r,id]=route();const V={mail:vMail,player:vPlayer,push:vPush,dieseapp:vDieseApp,start:vStart,termine:vTermine,termin:()=>vTermin(id),chat:vChat,material:vMaterial,mehr:vMehr,mitglieder:vMitglieder,geburtstage:vGeburtstage,stamm:()=>vStamm(id||S.me.id),ehemalige:vEhemalige,funktionen:vFunktionen,ahnen:()=>vAhnen(location.hash.split("/").slice(2).join("/")),kalender:vKalender,ehrungen:vEhrungen,umfragen:vUmfragen,abwesenheit:vAbwesenheit,blatt:()=>vBlatt(id),vorstand:vVorstand,statistik:vStatistik,verwaltung:vVerwaltung}[r]||vStart;
+  const[r,id]=route();const V={gremien:vGremien,gremium:()=>vGremium(id),gsitz:()=>vGSitz(id,route()[2]),gein:()=>vGDoc("gein",id,route()[2]),gprot:()=>vGDoc("gprot",id,route()[2]),mail:vMail,player:vPlayer,push:vPush,dieseapp:vDieseApp,start:vStart,termine:vTermine,termin:()=>vTermin(id),chat:vChat,material:vMaterial,mehr:vMehr,mitglieder:vMitglieder,geburtstage:vGeburtstage,stamm:()=>vStamm(id||S.me.id),ehemalige:vEhemalige,funktionen:vFunktionen,ahnen:()=>vAhnen(location.hash.split("/").slice(2).join("/")),kalender:vKalender,ehrungen:vEhrungen,umfragen:vUmfragen,abwesenheit:vAbwesenheit,blatt:()=>vBlatt(id),vorstand:vVorstand,statistik:vStatistik,verwaltung:vVerwaltung}[r]||vStart;
   $("#app").innerHTML=V();$("#tabs").hidden=false;renderTabs()}
 
 /* ---------- Push-Nachrichten (Web Push, Service Worker sw.js) ---------- */
@@ -1344,6 +1345,148 @@ function versionCheck(){const url=location.pathname+(location.pathname.endsWith(
     d.innerHTML=`<span style="flex:1">Neue Version ${m[1]} verfügbar (du hast ${APP_VERSION}).</span><button style="background:#de1034;color:#fff;border:0;border-radius:8px;padding:6px 12px;font-weight:700;cursor:pointer">Neu laden</button>`;
     d.querySelector("button").onclick=()=>{try{caches&&caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)))}catch(e){}const u=new URL(location.href);u.searchParams.set("v",m[1]);location.replace(u.toString())};document.body.appendChild(d)}).catch(()=>{})}
 setTimeout(versionCheck,2500);setInterval(()=>{if(!document.hidden)versionCheck()},10*60*1000);
+/* ===================== Gremien: Vorstand, MUKO, Obmannschaft – Sitzungen, Traktanden, Beschlüsse, Dokumente ===================== */
+const GR_LBL={vorstand:"Vorstandssitzung",muko:"MUKO-Sitzung",obmannschaft:"Obmannschaftssitzung"};
+const GR_ST={geplant:"geplant",eingeladen:"eingeladen",durchgefuehrt:"durchgeführt",abgesagt:"abgesagt"};
+const BS_ST={offen:"offen",erledigt:"erledigt",info:"zur Kenntnis"};
+S.gd=S.gd||{};
+async function grLoad(g,force){if(S.gd[g]&&!force)return S.gd[g];S.gd[g]=await rpc("gremium_data",{p_code:S.code,p_g:g});return S.gd[g]}
+async function grList(){try{S.gremien=await rpc("gremium_list",{p_code:S.code})}catch(e){S.gremien=[]}}
+const grTitle=(g,x)=>x.titel||`${GR_LBL[g]}${x.nr?" "+x.nr:""}`;
+const grDate=x=>D(x).toLocaleDateString("de-CH",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+const grNum=(t,i,j)=>j==null?`${i+1}.`:`${i+1}.${j+1}.`;
+function grTrakt(list){return`<ol style="margin:0;padding-left:0;list-style:none">${(list||[]).map((t,i)=>`<li style="margin:0 0 6px"><div class="row between" style="flex-wrap:nowrap;align-items:flex-start"><span><b>${grNum(t,i)}</b> ${esc(t.t||"")}</span>${t.v?`<span class="small muted" style="flex:none;margin-left:8px">${esc(t.v)}</span>`:""}</div>${(t.u||[]).length?`<div class="small" style="padding-left:22px">${t.u.map((u,j)=>`<div>${grNum(t,i,j)} ${esc(u)}</div>`).join("")}</div>`:""}</li>`).join("")}</ol>`}
+/* Editor für Traktandenlisten (Sitzung und Vorlage) */
+function grEditor(list){S.trEdit=JSON.parse(JSON.stringify(list||[]));return`<div id="tred">${grEditorRows()}</div><button class="btn sm" data-act="tradd" style="margin-top:6px">+ Traktandum</button>`}
+function grEditorRows(){return S.trEdit.map((t,i)=>`<div class="card" style="padding:8px 10px;margin:0 0 6px"><div class="row" style="flex-wrap:nowrap;gap:6px"><b style="flex:none;width:22px">${i+1}.</b>
+  <input class="input" data-tr="t" data-i="${i}" value="${esc(t.t||"")}" placeholder="Traktandum" style="flex:1"><input class="input" data-tr="v" data-i="${i}" value="${esc(t.v||"")}" placeholder="wer" style="width:90px;flex:none"></div>
+  <textarea class="input small" data-tr="u" data-i="${i}" rows="${Math.max(1,(t.u||[]).length)}" placeholder="Unterpunkte (eine Zeile pro Punkt)" style="margin-top:4px">${esc((t.u||[]).join("\n"))}</textarea>
+  <div class="row small" style="gap:4px;margin-top:4px"><button class="btn sm ghost" data-act="trmv" data-i="${i}" data-d="-1">↑</button><button class="btn sm ghost" data-act="trmv" data-i="${i}" data-d="1">↓</button><button class="btn sm ghost" data-act="trdel" data-i="${i}">✕ entfernen</button></div></div>`).join("")}
+function grTrRead(){document.querySelectorAll("[data-tr]").forEach(el=>{const t=S.trEdit[+el.dataset.i];if(!t)return;const k=el.dataset.tr;if(k==="u")t.u=el.value.split("\n").map(x=>x.trim()).filter(Boolean);else t[k]=el.value.trim()});return S.trEdit.filter(t=>t.t)}
+
+function vGremien(){if(!S.gremien){grList().then(render);return`<p class="muted">wird geladen …</p>`}
+  if(!S.gremien.length)return`<button class="btn ghost sm" data-act="go" data-r="mehr" style="margin-bottom:10px">← Mehr</button><h1>Gremien</h1><p class="muted">Dieser Bereich ist für Mitglieder von Vorstand, MUKO und Obmannschaft.</p>`;
+  return`<button class="btn ghost sm" data-act="go" data-r="mehr" style="margin-bottom:10px">← Mehr</button><h1>Gremien</h1><p class="muted small">Sitzungen, Traktanden, Beschlüsse und Dokumente. Sichtbar nur für die Mitglieder des jeweiligen Gremiums (gemäss «Vorstand & Chargen»).</p>
+  ${S.gremien.map(x=>`<button class="card" data-act="go" data-r="gremium/${x.g}" style="display:block;width:100%;text-align:left;cursor:pointer"><div class="row between"><b>${esc(x.name)}</b><span class="muted">›</span></div>
+    <div class="small muted">${x.next?`Nächste Sitzung: ${grDate(x.next)}, ${fTime(x.next)} Uhr`:"keine Sitzung geplant"}${x.offen?` · ${x.offen} offene Beschlüsse`:""}</div></button>`).join("")}`}
+
+function vGremium(g){const d=S.gd[g];if(!d){grLoad(g).then(render).catch(e=>{toast(e.message);go("gremien")});return`<p class="muted">wird geladen …</p>`}
+  const tab=S.grTab||"sitzungen",st=d.settings||{},now=new Date();
+  const tb=(k,l)=>`<button class="chip ${tab===k?"on":""}" data-act="grtab" data-k="${k}">${l}</button>`;
+  let h=`<button class="btn ghost sm" data-act="go" data-r="gremien" style="margin-bottom:10px">← Gremien</button><h1 style="margin:0 0 6px">${esc(st.name||g)}</h1>
+  <div class="filter">${tb("sitzungen","Sitzungen")}${tb("beschluesse",`Beschlüsse${d.beschluesse.filter(b=>b.status==="offen").length?" ("+d.beschluesse.filter(b=>b.status==="offen").length+")":""}`)}${tb("dokumente","Dokumente")}${tb("mitglieder","Mitglieder")}${tb("vorlage","Vorlage & Einstellungen")}</div>`;
+  if(tab==="sitzungen"){const fut=d.sitzungen.filter(x=>D(x.start)>=new Date(now-864e5)),past=d.sitzungen.filter(x=>D(x.start)<new Date(now-864e5)).reverse();
+    const row=x=>`<button class="li" data-act="go" data-r="gsitz/${g}/${x.id}"><div class="av">${D(x.start).getDate()}</div><div class="grow"><div class="nm">${esc(grTitle(g,x))}</div><div class="sub">${grDate(x.start)}, ${fTime(x.start)} Uhr${x.ort?" · "+esc(x.ort.split(",")[0]):""}</div></div><span class="chip ${x.status==="abgesagt"?"w":x.status==="durchgefuehrt"?"":"g"}">${GR_ST[x.status]}</span></button>`;
+    h+=`<div class="row between" style="margin:8px 0"><h3 style="margin:0">Kommende Sitzungen</h3><button class="btn sm primary" data-act="grnew" data-g="${g}">+ Sitzung</button></div><div class="card"><div class="list">${fut.map(row).join("")||`<p class="muted small">Keine geplant.</p>`}</div></div>
+      ${past.length?`<details class="card"><summary style="cursor:pointer;font-weight:700">Vergangene Sitzungen (${past.length})</summary><div class="list">${past.map(row).join("")}</div></details>`:""}
+      <p class="small muted">Die Sitzungen erscheinen auch im persönlichen Kalender-Abo (Mehr → Kalender-Abo) der Gremiumsmitglieder.</p>`}
+  if(tab==="beschluesse"){const f=S.bsF||"offen",ls=d.beschluesse.filter(b=>f==="alle"||b.status===f);
+    h+=`<div class="row between" style="margin:8px 0;flex-wrap:wrap;gap:6px"><div class="filter" style="margin:0">${["offen","erledigt","info","alle"].map(k=>`<button class="chip ${f===k?"on":""}" data-act="bsf" data-k="${k}">${k==="alle"?"alle":BS_ST[k]}</button>`).join("")}</div><div class="row">${PBTN}<button class="btn sm primary" data-act="bsedit" data-g="${g}">+ Beschluss</button></div></div>
+      <div class="card">${ls.length?`<table class="t"><tr><th>Datum</th><th>Beschluss</th><th>Wer</th><th>Termin</th><th></th></tr>${ls.map(b=>`<tr><td style="white-space:nowrap">${fDateY(b.datum)}</td><td>${b.traktandum?`<span class="small muted">${esc(b.traktandum)}</span><br>`:""}${esc(b.text)}</td><td>${esc(b.verantwortlich||"")}</td><td style="white-space:nowrap">${b.termin?fDateY(b.termin):""}</td><td><button class="btn sm ghost noprint" data-act="bsedit" data-g="${g}" data-id="${b.id}">✎</button>${b.status==="offen"?` <button class="btn sm noprint" data-act="bsdone" data-g="${g}" data-id="${b.id}" title="als erledigt markieren">✓</button>`:""}</td></tr>`).join("")}</table>`:`<p class="muted small">Keine Beschlüsse.</p>`}</div>`}
+  if(tab==="dokumente")h+=grDocs(g,null);
+  if(tab==="mitglieder")h+=`<div class="card"><table class="t">${d.mitglieder.map(m=>`<tr><td>${esc(m.vorname)} ${esc(m.name)}</td><td>${esc(m.funktion)}</td><td>${m.gast?`<span class="chip">Gast</span>`:""}</td></tr>`).join("")}</table>
+    <p class="small muted" style="margin:8px 0 0">Die Zusammensetzung kommt aus «Vorstand & Chargen» (aktuelle Einträge${g==="vorstand"?"; Gäste = Häkchen «V+»":g==="muko"?"; Häkchen «MUKO»":""}).</p></div>`;
+  if(tab==="vorlage")h+=`<div class="card" style="display:grid;gap:6px"><b>Standard für neue Sitzungen</b>
+      <label class="small muted">Ort</label><input id="gsort" class="input" value="${esc(st.ort||"")}"><label class="small muted">Zeit</label><input id="gszeit" class="input" type="time" value="${esc(st.zeit||"")}">
+      <label class="small muted">OneDrive-Link zur Datenablage (Freigabe-Link «https://…»)</label><input id="gsod" class="input" value="${esc(st.onedrive_url||"")}" placeholder="https://…sharepoint.com/…">
+      <p class="small muted" style="margin:0">So kommst du zum Link: im Explorer bzw. auf onedrive.com den Ordner (z.B. «Datenablage MCT Vorstand») rechts anklicken → «Link kopieren» bzw. «Teilen» → «Personen in Männerchor Thun 1829 mit dem Link» → Link kopieren und hier einfügen.</p>
+      <b style="margin-top:8px">Standard-Traktandenliste</b>${grEditor(st.traktanden)}
+      <button class="btn primary" data-act="gssave" data-g="${g}" style="margin-top:8px">Speichern</button></div>`;
+  return h}
+
+function grDocs(g,sid){const d=S.gd[g],st=d.settings||{},ls=d.dokumente.filter(x=>sid?x.sitzung_id===sid:true),sz=x=>x.groesse?fSize(x.groesse):"";
+  return`<div class="card">${st.onedrive_url?`<a class="btn" href="${esc(st.onedrive_url)}" target="_blank" rel="noopener" style="width:100%;margin-bottom:8px">📁 Datenablage auf OneDrive öffnen</a>`:sid?"":`<p class="small muted">Tipp: Unter «Vorlage & Einstellungen» den OneDrive-Link zur Datenablage hinterlegen.</p>`}
+    <div class="row" style="flex-wrap:wrap;gap:6px"><input type="file" id="gdfile" class="input" multiple style="flex:1;min-width:200px"><button class="btn sm primary" data-act="gdup" data-g="${g}" data-s="${sid||""}">Hochladen</button></div>
+    <div class="list" style="margin-top:8px">${ls.map(x=>`<div class="li" style="cursor:default"><div class="av">📄</div><div class="grow"><div class="nm">${esc(x.titel)}</div><div class="sub">${fDateY(x.created_at)}${sz(x)?" · "+sz(x):""}${!sid&&x.sitzung_id?` · ${esc(grTitle(g,d.sitzungen.find(s=>s.id===x.sitzung_id)||{}))}`:""}</div></div>
+      <button class="btn sm" data-act="gdopen" data-id="${x.id}">Öffnen</button><button class="btn sm ghost" data-act="gddel" data-g="${g}" data-id="${x.id}" aria-label="löschen">✕</button></div>`).join("")||`<p class="muted small">Noch keine Dokumente.</p>`}</div></div>`}
+
+function vGSitz(g,id){const d=S.gd[g];if(!d){grLoad(g).then(render);return`<p class="muted">wird geladen …</p>`}
+  const x=d.sitzungen.find(s=>s.id===id);if(!x)return`<p class="muted">Sitzung nicht gefunden.</p>`;
+  const bs=d.beschluesse.filter(b=>b.sitzung_id===id),gst=d.mitglieder.filter(m=>m.gast),tm=d.mitglieder.filter(m=>!m.gast);
+  return`<button class="btn ghost sm" data-act="go" data-r="gremium/${g}" style="margin-bottom:10px">← ${esc(d.settings.name)}</button>
+  <h1 style="margin:0 0 4px">${esc(grTitle(g,x))}</h1><p class="muted" style="margin:0 0 10px">${grDate(x.start)}, ${fTime(x.start)} Uhr${x.ort?" · "+esc(x.ort):""}</p>
+  <div class="row" style="flex-wrap:wrap;gap:6px;margin-bottom:10px"><button class="btn sm primary" data-act="go" data-r="gein/${g}/${id}">📄 Einladung / Traktandenliste</button><button class="btn sm" data-act="go" data-r="gprot/${g}/${id}">📝 Protokoll</button>${isV()?`<button class="btn sm" data-act="grmail" data-g="${g}" data-id="${id}">✉️ Einladung mailen</button>`:""}<button class="btn sm ghost" data-act="grsedit" data-g="${g}" data-id="${id}">Termin bearbeiten</button></div>
+  <div class="card"><div class="row between"><h3 style="margin:0 0 6px">Traktanden</h3><select class="input" data-chg="grstatus" data-g="${g}" data-id="${id}" style="width:auto">${Object.entries(GR_ST).map(([k,l])=>`<option value="${k}" ${x.status===k?"selected":""}>${l}</option>`).join("")}</select></div>
+    ${grEditor(x.traktanden)}<button class="btn primary" data-act="grtsave" data-g="${g}" data-id="${id}" style="margin-top:8px">Traktanden speichern</button></div>
+  <div class="card"><h3 style="margin:0 0 6px">Notizen / Protokoll</h3><textarea id="gprot" class="input" style="min-height:180px" placeholder="Notizen zu den Traktanden, Protokoll …">${esc(x.protokoll||"")}</textarea><button class="btn sm primary" data-act="grpsave" data-g="${g}" data-id="${id}" style="margin-top:6px">Speichern</button></div>
+  <div class="card"><div class="row between"><h3 style="margin:0">Beschlüsse dieser Sitzung</h3><button class="btn sm" data-act="bsedit" data-g="${g}" data-s="${id}">+ Beschluss</button></div>
+    ${bs.length?bs.map(b=>`<div class="li" style="cursor:default"><div class="grow"><div class="nm">${esc(b.text)}</div><div class="sub">${b.traktandum?esc(b.traktandum)+" · ":""}${esc(b.verantwortlich||"")}${b.termin?" · bis "+fDateY(b.termin):""} · ${BS_ST[b.status]}</div></div><button class="btn sm ghost" data-act="bsedit" data-g="${g}" data-id="${b.id}">✎</button></div>`).join(""):`<p class="small muted">Noch keine.</p>`}</div>
+  <h3>Dokumente zur Sitzung</h3>${grDocs(g,id)}
+  <div class="card soft small"><b>Teilnehmer:</b> ${tm.map(m=>esc(m.vorname+" "+m.name)).join(", ")}${gst.length?`<br><b>Gäste:</b> ${gst.map(m=>esc(m.vorname+" "+m.name)).join(", ")}`:""}</div>
+  <button class="btn ghost sm" data-act="grsdel" data-g="${g}" data-id="${id}">Sitzung löschen</button>`}
+
+/* Druckansicht: Einladung mit Traktandenliste (wie bisherige Vorlage) bzw. Protokoll */
+function vGDoc(kind,g,id){const d=S.gd[g];if(!d){grLoad(g).then(render);return`<p class="muted">wird geladen …</p>`}
+  const x=d.sitzungen.find(s=>s.id===id);if(!x)return`<p class="muted">Sitzung nicht gefunden.</p>`;
+  const tm=d.mitglieder.filter(m=>!m.gast),gst=d.mitglieder.filter(m=>m.gast),bs=d.beschluesse.filter(b=>b.sitzung_id===id);
+  const tr=l=>`<table class="t" style="border:0">${l.map(m=>`<tr><td style="width:40%">${esc(m.vorname)} ${esc(m.name)}</td><td>${esc(m.funktion)}</td></tr>`).join("")}</table>`;
+  const head=`<div class="noprint row between" style="margin-bottom:10px"><button class="btn ghost sm" data-act="go" data-r="gsitz/${g}/${id}">← Sitzung</button>${PBTN}</div>`;
+  if(kind==="gein")return head+`<p class="eyebrow">${esc(d.settings.name)} · Männerchor Thun</p><h1>Einladung zur ${esc(grTitle(g,x))}</h1>
+  <div class="card"><table class="t" style="border:0"><tr><td style="width:120px"><b>Termin, Zeit</b></td><td>${grDate(x.start)}, ${fTime(x.start)} Uhr${x.ende?" – "+fTime(x.ende)+" Uhr":""}</td></tr><tr><td><b>Ort</b></td><td>${esc(x.ort||"")}</td></tr></table></div>
+  <div class="card"><b>Teilnehmer</b>${tr(tm)}${gst.length?`<b style="display:block;margin-top:8px">Gäste</b>${tr(gst)}`:""}</div>
+  <div class="card"><b style="display:block;margin-bottom:6px">Traktanden</b>${grTrakt(x.traktanden)}</div>`;
+  return head+`<p class="eyebrow">${esc(d.settings.name)} · Männerchor Thun</p><h1>Protokoll ${esc(grTitle(g,x))}</h1>
+  <div class="card"><table class="t" style="border:0"><tr><td style="width:120px"><b>Datum</b></td><td>${grDate(x.start)}, ${fTime(x.start)} Uhr</td></tr><tr><td><b>Ort</b></td><td>${esc(x.ort||"")}</td></tr></table></div>
+  <div class="card"><b style="display:block;margin-bottom:6px">Traktanden</b>${grTrakt(x.traktanden)}</div>
+  <div class="card"><b>Protokoll</b><div style="white-space:pre-wrap;margin-top:6px">${esc(x.protokoll||"–")}</div></div>
+  ${bs.length?`<div class="card"><b>Beschlüsse</b><table class="t">${bs.map(b=>`<tr><td>${b.traktandum?`<span class="small muted">${esc(b.traktandum)}</span><br>`:""}${esc(b.text)}</td><td>${esc(b.verantwortlich||"")}</td><td>${b.termin?fDateY(b.termin):""}</td></tr>`).join("")}</table></div>`:""}`}
+
+async function grDocUpload(g,sid){const fl=[...($("#gdfile")?.files||[])];if(!fl.length)return toast("Bitte Dateien wählen");let ok=0;
+  for(const f of fl){if(f.size>50*1048576){toast(`${f.name}: grösser als 50 MB`);continue}
+    try{toast(`Lade ${f.name} …`);const u=await filesFn({action:"gupload",g,filename:f.name});
+      const r=await fetch(u.signedUrl,{method:"PUT",headers:{apikey:SUPA.key,"x-upsert":"false","Content-Type":f.type||"application/octet-stream"},body:f});if(!r.ok)throw new Error("Upload fehlgeschlagen ("+r.status+")");
+      await rpc("gremium_doc_add",{p_code:S.code,p_g:g,p_sitzung:sid||null,p_titel:f.name.replace(/\.[^.]+$/,""),p_path:u.path,p_mime:f.type||null,p_size:f.size});ok++}catch(e){toast(e.message)}}
+  await grLoad(g,true);render();if(ok)toast(`${ok} Dokument${ok>1?"e":""} hochgeladen`)}
+function grSitzForm(g,x){const st=S.gd[g].settings||{},y=new Date().getFullYear(),n=S.gd[g].sitzungen.filter(s=>D(s.start).getFullYear()===y).length+1;
+  const dflt=x?isoLocal(x.start):(()=>{const d=new Date(Date.now()+7*864e5);const[hh,mm]=(st.zeit||"18:30").split(":");d.setHours(+hh||18,+mm||0,0,0);return isoLocal(d)})();
+  modal(`<h2>${x?"Termin bearbeiten":"Neue Sitzung"}</h2><div style="display:grid;gap:8px">
+    <label class="small muted">Nummer</label><input id="gsn" class="input" value="${esc(x?x.nr||"":n+"/"+y)}">
+    <label class="small muted">Beginn</label><input id="gss" class="input" type="datetime-local" value="${dflt}">
+    <label class="small muted">Ende (optional)</label><input id="gse" class="input" type="datetime-local" value="${x&&x.ende?isoLocal(x.ende):""}">
+    <label class="small muted">Ort</label><input id="gso" class="input" value="${esc(x?x.ort||"":st.ort||"")}">
+    <label class="small muted">Titel (optional, sonst «${GR_LBL[g]} Nr.»)</label><input id="gst" class="input" value="${esc(x?x.titel||"":"")}"></div>
+    ${x?"":`<p class="small muted">Die Traktandenliste wird aus der Vorlage übernommen und lässt sich danach anpassen.</p>`}
+    <div class="row" style="margin-top:12px"><button class="btn primary" data-act="grssave" data-g="${g}" data-id="${x?x.id:""}">Speichern</button><button class="btn ghost" data-act="close">Abbrechen</button></div>`)}
+function bsForm(g,b,sid){const d=S.gd[g];b=b||{sitzung_id:sid||null,status:"offen",datum:new Date().toISOString().slice(0,10)};
+  modal(`<h2>${b.id?"Beschluss bearbeiten":"Neuer Beschluss"}</h2><div style="display:grid;gap:8px">
+    <label class="small muted">Sitzung</label><select id="bss" class="input"><option value="">– ohne –</option>${d.sitzungen.slice().reverse().map(s=>`<option value="${s.id}" ${b.sitzung_id===s.id?"selected":""}>${esc(grTitle(g,s))} · ${fDateY(s.start)}</option>`).join("")}</select>
+    <label class="small muted">Datum</label><input id="bsd" class="input" type="date" value="${esc(b.datum||"")}">
+    <label class="small muted">Traktandum</label><input id="bst" class="input" value="${esc(b.traktandum||"")}" placeholder="z.B. 4.1 Herrenabend">
+    <label class="small muted">Beschluss / Pendenz</label><textarea id="bsx" class="input" rows="4">${esc(b.text||"")}</textarea>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><div><label class="small muted">Verantwortlich</label><input id="bsv" class="input" value="${esc(b.verantwortlich||"")}" placeholder="z.B. RS"></div><div><label class="small muted">Termin</label><input id="bsm" class="input" type="date" value="${esc(b.termin||"")}"></div></div>
+    <label class="small muted">Status</label><select id="bsz" class="input">${Object.entries(BS_ST).map(([k,l])=>`<option value="${k}" ${b.status===k?"selected":""}>${l}</option>`).join("")}</select></div>
+    <div class="row" style="margin-top:12px"><button class="btn primary" data-act="bssave" data-g="${g}" data-id="${b.id||""}">Speichern</button>${b.id?`<button class="btn ghost" data-act="bsdel" data-g="${g}" data-id="${b.id}">Löschen</button>`:""}<button class="btn ghost" data-act="close">Abbrechen</button></div>`)}
+const grCall=async(g,fn,args,msg)=>{try{const r=await rpc(fn,{p_code:S.code,p_g:g,...args});await grLoad(g,true);render();if(msg)toast(msg);return r}catch(e){toast(e.message);throw e}};
+Object.assign(A,{
+  grtab:d=>{S.grTab=d.k;render()},bsf:d=>{S.bsF=d.k;render()},
+  tradd:()=>{grTrRead();S.trEdit.push({t:"",v:"",u:[]});$("#tred").innerHTML=grEditorRows()},
+  trdel:d=>{grTrRead();S.trEdit.splice(+d.i,1);$("#tred").innerHTML=grEditorRows()},
+  trmv:d=>{grTrRead();const i=+d.i,j=i+(+d.d);if(j<0||j>=S.trEdit.length)return;[S.trEdit[i],S.trEdit[j]]=[S.trEdit[j],S.trEdit[i]];$("#tred").innerHTML=grEditorRows()},
+  grnew:d=>grSitzForm(d.g,null),grsedit:d=>grSitzForm(d.g,S.gd[d.g].sitzungen.find(s=>s.id===d.id)),
+  grssave:async d=>{const v=k=>$(k).value;if(!v("#gss"))return toast("Bitte Beginn angeben");const data={nr:v("#gsn"),start:new Date(v("#gss")).toISOString(),ende:v("#gse")?new Date(v("#gse")).toISOString():"",ort:v("#gso"),titel:v("#gst")};
+    closeModal();const id=await grCall(d.g,"gremium_sitzung_save",{p_id:d.id||null,p_data:data},"Gespeichert").catch(()=>null);if(id&&!d.id)go(`gsitz/${d.g}/${id}`)},
+  grtsave:d=>grCall(d.g,"gremium_sitzung_save",{p_id:d.id,p_data:{traktanden:grTrRead()}},"Traktanden gespeichert").catch(()=>{}),
+  grpsave:d=>grCall(d.g,"gremium_sitzung_save",{p_id:d.id,p_data:{protokoll:$("#gprot").value}},"Gespeichert").catch(()=>{}),
+  grsdel:d=>{if(!confirm("Sitzung endgültig löschen? Beschlüsse und Dokumente bleiben erhalten."))return;grCall(d.g,"gremium_sitzung_delete",{p_id:d.id},"Gelöscht").then(()=>go("gremium/"+d.g)).catch(()=>{})},
+  gssave:d=>grCall(d.g,"gremium_settings_save",{p_data:{ort:$("#gsort").value,zeit:$("#gszeit").value,onedrive_url:$("#gsod").value,traktanden:grTrRead()}},"Vorlage gespeichert").catch(()=>{}),
+  bsedit:d=>bsForm(d.g,d.id?S.gd[d.g].beschluesse.find(b=>b.id===d.id):null,d.s),
+  bssave:d=>{const v=k=>$(k).value;const data={sitzung_id:v("#bss"),datum:v("#bsd"),traktandum:v("#bst"),text:v("#bsx"),verantwortlich:v("#bsv"),termin:v("#bsm"),status:v("#bsz")};closeModal();grCall(d.g,"gremium_beschluss_save",{p_id:d.id||null,p_data:data},"Gespeichert").catch(()=>{})},
+  bsdone:d=>{const b=S.gd[d.g].beschluesse.find(x=>x.id===d.id);grCall(d.g,"gremium_beschluss_save",{p_id:d.id,p_data:{...b,status:"erledigt"}},"Erledigt ✓").catch(()=>{})},
+  bsdel:d=>{if(!confirm("Beschluss löschen?"))return;closeModal();grCall(d.g,"gremium_beschluss_delete",{p_id:d.id},"Gelöscht").catch(()=>{})},
+  gdup:d=>grDocUpload(d.g,d.s||null),
+  gdopen:async d=>{const w=window.open("","_blank");try{const j=await filesFn({action:"gurl",id:d.id});if(w)w.location=j.url;else location.href=j.url}catch(e){if(w)w.close();toast(e.message)}},
+  gddel:async d=>{if(!confirm("Dokument löschen?"))return;try{await filesFn({action:"gdelete",id:d.id});await grLoad(d.g,true);render();toast("Gelöscht")}catch(e){toast(e.message)}},
+  grmail:async d=>{const g=d.g,x=S.gd[g].sitzungen.find(s=>s.id===d.id),ids=S.gd[g].personen||[];if(!ids.length)return toast("Keine Mitglieder");
+    const tr=(x.traktanden||[]).map((t,i)=>`${i+1}. ${t.t}${t.v?" ("+t.v+")":""}${(t.u||[]).map((u,j)=>`\n   ${i+1}.${j+1}. ${u}`).join("")}`).join("\n");
+    const text=`Lieber {vorname}\n\nIch lade dich herzlich ein zur ${grTitle(g,x)}:\n\n${grDate(x.start)}, ${fTime(x.start)} Uhr\n${x.ort||""}\n\nTraktanden\n${tr}\n\nHerzliche Grüsse\n${S.me.vorname}`;
+    if(!confirm(`Einladung an ${ids.length} Mitglieder des Gremiums per E-Mail senden?`))return;
+    try{const j=await rpc("chor_mail_send",{p_code:S.code,p_persons:ids,p_subject:`Einladung zur ${grTitle(g,x)} – ${fDateY(x.start)}`,p_text:text,p_test:false});
+      if(x.status==="geplant")await rpc("gremium_sitzung_save",{p_code:S.code,p_g:g,p_id:x.id,p_data:{status:"eingeladen"}});await grLoad(g,true);render();
+      toast(`Einladung an ${j.sent} gesendet${(j.ohne_mail||[]).length?` · ohne E-Mail: ${j.ohne_mail.join(", ")}`:""}`)}catch(e){toast(e.message)}}
+});
+document.addEventListener("change",e=>{const el=e.target;if(el.dataset&&el.dataset.chg==="grstatus")grCall(el.dataset.g,"gremium_sitzung_save",{p_id:el.dataset.id,p_data:{status:el.value}},"Status: "+GR_ST[el.value]).catch(()=>{});
+  if(el.dataset&&el.dataset.chg==="muko"){call("chor_board_muko",{p_id:el.dataset.id,p_on:el.checked},el.checked?"In der MUKO":"Aus MUKO entfernt").catch(()=>{})}});
+
 (function init(){try{if(new URLSearchParams(location.search).get("pick")==="1")sessionStorage.setItem("chor_pick","1")}catch(e){}const sp=new URLSearchParams(location.search),q=sp.get("c");const c=q||store.get("chor_code");if(c)login(c,sp.get("chor")||null);else vLogin()})();
 
 </script>
