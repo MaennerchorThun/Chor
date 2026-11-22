@@ -316,7 +316,7 @@ const LOGO="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANAAAABpCAYAAABLYa3JAA
 /* ================= MCT Chor-App =================
    Für die aktiven Sänger des Männerchors Thun. Daten in Supabase (gleiche Datenbank wie die Herrenabend-App),
    Zugriff nur über geprüfte Funktionen mit dem persönlichen Code. Dateien im privaten Speicher «chor». */
-const APP_VERSION="3.18"; /* bei jeder Änderung erhöhen */
+const APP_VERSION="3.19"; /* bei jeder Änderung erhöhen */
 const SUPA={url:"https://tvygwnawrkxdhzghxgfv.supabase.co",key:"sb_publishable_yO40Pv19n6Wq0Wh769VZCg_q9BRTBvd"};
 const FILES_FN=SUPA.url+"/functions/v1/chor-files";
 const PUSH_FN=SUPA.url+"/functions/v1/chor-push",VAPID_PUBLIC="BNWkxTW3k3B7aTQY4r7nJ5VxkPL57BxlhuReulrRmmi8KPKTEZeYG52AFhSLN5o5Gs-Lhr5fqoMqBqqpBMyywEo";
@@ -387,7 +387,7 @@ function bdays(){const t=new Date();t.setHours(0,0,0,0);
 const canCongrats=b=>b.m.id!==S.me.id&&(b.days===0||(b.ago>=0&&b.ago<=7));
 function bdayRow(b){const given=S.congratsGiven.includes(b.m.id);
   return`<div class="li" style="cursor:default"><div class="av ${b.days===0?"c":""}">${b.days===0?"🎂":ini(b.m)}</div><div class="grow"><div class="nm">${esc(full(b.m))}</div><div class="sub">${b.d.toLocaleDateString("de-CH",{day:"numeric",month:"long"})}${b.m.jg?(()=>{const past=b.ago>0&&b.ago<=7,y=(past?new Date().getFullYear():b.d.getFullYear())-b.m.jg;return b.days===0||past?` · <b>${y} Jahre</b>`:` · wird ${y}`})():""} · ${b.days===0?"<b>heute</b>":b.ago>0&&b.ago<=7?`vor ${b.ago} Tag${b.ago>1?"en":""}`:`in ${b.days} Tagen`}${b.m.stimme?" · "+esc(b.m.stimme):""}</div></div>
-    ${canCongrats(b)?(given?`<div class="row" style="flex-wrap:nowrap;gap:6px"><span class="chip g">gratuliert ✓</span><button class="btn sm" data-act="congrats" data-id="${b.m.id}" title="per WhatsApp, SMS oder E-Mail gratulieren">💬</button></div>`:`<button class="btn sm primary" data-act="congrats" data-id="${b.m.id}" title="In der App, per WhatsApp, SMS oder E-Mail">🎉 Gratulieren</button>`):""}</div>`}
+    ${canCongrats(b)?(given?`<div class="row" style="flex-wrap:nowrap;gap:6px"><span class="chip g">gratuliert ✓</span><button class="btn sm" data-act="congrats" data-id="${b.m.id}" title="per WhatsApp, SMS oder E-Mail gratulieren">💬</button></div>`:`<button class="btn sm primary" data-act="congrats" data-id="${b.m.id}" title="In der App, per WhatsApp, SMS oder E-Mail">🎉 Gratulieren</button>`):b.m.id!==S.me.id&&b.days>0&&b.days<=14?`<span class="chip" title="Der Knopf «Gratulieren» erscheint am Geburtstag">🎂 ab ${b.d.toLocaleDateString("de-CH",{day:"numeric",month:"numeric"})}.</span>`:""}</div>`}
 
 /* ---------- Termine ---------- */
 const evFuture=()=>S.events.filter(e=>D(e.ende||e.start)>=new Date(Date.now()-3*36e5));
