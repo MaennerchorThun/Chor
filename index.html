@@ -277,6 +277,8 @@ a.sp{color:inherit;text-decoration:none}a.sp:hover .grow,a.card.link:hover b{col
 .pbar2{position:relative;height:12px;background:transparent;border-radius:6px;min-width:60px}.pbar2 i,.pbar2 u{position:absolute;left:0;top:0;bottom:0;border-radius:6px}.pbar2 u{background:var(--surface2);border:1px solid var(--line);z-index:0}.pbar2 i{background:var(--brand);z-index:1}
 .ptab td{vertical-align:middle;padding:5px 6px}
 #printroot{display:none}
+.onlyprint{display:none}
+@media print{#printroot .onlyprint{display:inline!important}}
 .brief{background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:10.5pt;line-height:1.3;padding:22px 26px;border:1px solid #ddd;border-radius:6px;max-width:820px;overflow-x:auto}
 .brief .bh{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.brief .bl img{height:46px;display:block;margin:0 0 14px}.brief .bn{font-size:15pt;font-weight:700}
 .brief .ba{border-collapse:collapse;font-size:10.5pt}.brief .ba td{padding:0 0 0 30px;vertical-align:top}.brief .ba td+td{text-align:right}
@@ -327,9 +329,9 @@ const LOGO="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANAAAABpCAYAAABLYa3JAA
 /* ================= MCT Chor-App =================
    Für die aktiven Sänger des Männerchors Thun. Daten in Supabase (gleiche Datenbank wie die Herrenabend-App),
    Zugriff nur über geprüfte Funktionen mit dem persönlichen Code. Dateien im privaten Speicher «chor». */
-const APP_VERSION="3.27"; /* bei jeder Änderung erhöhen */
+const APP_VERSION="3.29"; /* bei jeder Änderung erhöhen */
 const SUPA={url:"https://tvygwnawrkxdhzghxgfv.supabase.co",key:"sb_publishable_yO40Pv19n6Wq0Wh769VZCg_q9BRTBvd"};
-const FILES_FN=SUPA.url+"/functions/v1/chor-files";
+const FILES_FN=SUPA.url+"/functions/v1/chor-files",WEBLING_FN=SUPA.url+"/functions/v1/chor-webling";
 const PUSH_FN=SUPA.url+"/functions/v1/chor-push",VAPID_PUBLIC="BNWkxTW3k3B7aTQY4r7nJ5VxkPL57BxlhuReulrRmmi8KPKTEZeYG52AFhSLN5o5Gs-Lhr5fqoMqBqqpBMyywEo";
 const TYP={probe:{l:"Probe",ic:"🎵"},auftritt:{l:"Auftritt",ic:"🎤"},anlass:{l:"Anlass",ic:"🍷"},ausflug:{l:"Ausflug",ic:"🚌"}};
 const ART={noten:{l:"Noten",ic:"📄"},audio:{l:"Audio",ic:"🎧"},video:{l:"Video",ic:"🎬"},text:{l:"Text",ic:"📝"},sonstiges:{l:"Sonstiges",ic:"📎"}};
@@ -413,7 +415,7 @@ function rsvpBtns(e){if(e.abgesagt)return`<span class="chip w">abgesagt</span>`;
 function evCard(e){const t=TYP[e.typ]||TYP.anlass;
   return`<div class="card ev ${e.abgesagt?"cancel":""}" style="margin-bottom:10px"><button class="evhead" data-act="go" data-r="termin/${e.id}">
     <div class="evdate"><b>${D(e.start).getDate()}</b><span>${D(e.start).toLocaleDateString("de-CH",{month:"short"})}</span></div>
-    <div class="grow"><div class="small muted">${t.ic} ${t.l} · ${D(e.start).toLocaleDateString("de-CH",{weekday:"long"})} ${fTime(e.start)}${e.ende?"–"+fTime(e.ende):""}</div><div class="ttl">${esc(e.titel)}</div>${e.ort?`<div class="small muted">📍 ${esc(e.ort)}</div>`:""}${e.abgesagt?"":`<div class="small muted">🕒 Eintreffen ${fTime(arrive(e))}</div>`}
+    <div class="grow"><div class="small muted">${t.ic} ${t.l} · ${D(e.start).toLocaleDateString("de-CH",{weekday:"long"})} ${fTime(e.start)}${e.ende?"–"+fTime(e.ende):""}</div><div class="ttl">${esc(e.titel)}${e.zielgruppe==="chargen"?` <span class="chip" title="Nur für Vorstand und Chargierte sichtbar">🔒 Chargierte</span>`:""}</div>${e.ort?`<div class="small muted">📍 ${esc(e.ort)}</div>`:""}${e.abgesagt?"":`<div class="small muted">🕒 Eintreffen ${fTime(arrive(e))}</div>`}
     <div class="small" style="margin-top:4px"><span style="color:var(--ok)">✓ ${e.ja}</span> · <span style="color:var(--danger)">✗ ${e.nein}</span> · <span class="muted">? ${e.vielleicht}</span>${e.anmeldeschluss?` · <span class="muted">Anmeldeschluss ${fDateY(e.anmeldeschluss)}</span>`:""}</div></div></button>
     <div style="margin-top:10px">${rsvpBtns(e)}</div></div>`}
 
@@ -455,7 +457,7 @@ function vTermin(id){
   const e=S.events.find(x=>x.id===id);if(!e)return`<p class="muted">Termin nicht gefunden.</p>`;
   const t=TYP[e.typ]||TYP.anlass;
   let h=`<button class="btn ghost sm" data-act="go" data-r="termine" style="margin-bottom:10px">← Termine</button>
-    <p class="eyebrow">${t.ic} ${t.l}${e.zaehlt?"":" · zählt nicht für die Statistik"}</p><h1>${esc(e.titel)}</h1>
+    <p class="eyebrow">${t.ic} ${t.l}${e.zaehlt?"":" · zählt nicht für die Statistik"}${e.zielgruppe==="chargen"?" · 🔒 nur Vorstand &amp; Chargierte":""}</p><h1>${esc(e.titel)}</h1>
     <div class="card">${e.abgesagt?`<div class="note">Dieser Termin ist abgesagt.</div>`:""}<p style="margin:0"><b>${fDate(e.start)}</b>, ${fTime(e.start)}${e.ende?"–"+fTime(e.ende):""} Uhr</p>${e.abgesagt?"":`<p style="margin:6px 0 0">🕒 Eintreffen: <b>${fTime(arrive(e))} Uhr</b>${e.eintreffen?"":` <span class="small muted">(${e.typ==="auftritt"?"1½ h":"5 Min."} vor Beginn)</span>`}</p>`}
     ${e.ort?`<p style="margin:6px 0 0">📍 <a href="https://maps.google.com/?q=${encodeURIComponent(e.ort)}" target="_blank" rel="noopener">${esc(e.ort)}</a></p>`:""}
     ${e.info?`<p class="small" style="margin:8px 0 0;white-space:pre-wrap">${esc(e.info)}</p>`:""}
@@ -487,6 +489,7 @@ function evForm(e){const d=e||{};const st=d.start?isoLocal(d.start):isoLocal(new
     <textarea id="fi" class="input" placeholder="Infos (Treffpunkt, Kleidung, Noten …)">${esc(d.info||"")}</textarea>
     <label class="small muted">Anmeldeschluss (optional)</label><input id="fa" class="input" type="datetime-local" value="${d.anmeldeschluss?isoLocal(d.anmeldeschluss):""}">
     <label class="row small"><input type="checkbox" id="fz" ${d.zaehlt===false?"":"checked"}> zählt für die Präsenz-Statistik</label>
+    ${isVet()?"":`<label class="small muted">Für wen?</label><select id="fzg" class="input"><option value="alle" ${d.zielgruppe!=="chargen"?"selected":""}>alle aktiven Sänger</option><option value="chargen" ${d.zielgruppe==="chargen"?"selected":""}>🔒 nur Vorstand &amp; Chargierte (z.B. Chargiertenessen)</option></select>`}
     ${e?"":pushBox()}${e?"":`<label class="small muted">Wöchentlich wiederholen (z.B. Proben): Anzahl weitere Wochen</label><input id="fw" class="input" type="number" min="0" max="60" value="0">`}
     </div><div class="row" style="margin-top:12px"><button class="btn primary" data-act="evsave" data-id="${e?e.id:""}">Speichern</button><button class="btn ghost" data-act="close">Abbrechen</button></div>`)}
 
@@ -708,6 +711,15 @@ function vAbwesenheit(){const mine=(S.absences||[]).filter(a=>a.person_id===S.me
 function vBlatt(id){
   let h=`<div class="noprint row between" style="margin-bottom:10px"><button class="btn ghost sm" data-act="go" data-r="termin/${id}">← Termin</button><button class="btn sm primary" data-act="print">🖨 PDF / Drucken</button></div><div id="blatt"><p class="muted">Probenblatt wird erstellt …</p></div>`;
   setTimeout(()=>loadBlatt(id),0);return h}
+async function loadPassiv(evId){const el=$("#passiv");if(!el)return;let L=[];try{L=await rpc("chor_passiv_list",{p_code:S.code})}catch(e){el.innerHTML=`<h3>🤝 Aufnahme Passivmitglieder</h3><p class="small muted">${esc(e.message)}</p>`;return}
+  const off=L.filter(a=>a.entscheid==="offen"),hier=L.filter(a=>a.entscheid!=="offen"&&a.event_id===evId),fr=L.filter(a=>a.entscheid!=="offen"&&a.event_id!==evId);
+  const who=a=>`<b>${esc(a.name)} ${esc(a.vorname)}</b>${a.ort?` <span class="muted">· ${esc(a.ort)}</span>`:""}`;
+  const res=a=>a.entscheid==="ja"?`<span class="chip g">✓ Ja – aufgenommen</span>`:`<span class="chip w">✗ Nein</span>`;
+  el.innerHTML=`<h3>🤝 Aufnahme Passivmitglieder</h3><div class="row between" style="align-items:flex-start;gap:8px"><p class="small muted" style="margin:0 0 8px">Anträge aus Webling («Anträge Passiv»). Der Präsident stellt sie vor, der Chor entscheidet.</p><button class="btn sm noprint" data-act="pasweb" data-e="${evId}" style="flex:none">↻ Webling</button></div>
+    ${off.length?`<table class="t">${off.map(a=>`<tr><td>${who(a)}<div class="small muted">Antrag vom ${fDateY(a.eingang)}</div></td><td style="white-space:nowrap;text-align:right"><span class="noprint"><button class="btn sm primary" data-act="pasja" data-id="${a.id}" data-e="${evId}">Ja</button> <button class="btn sm" data-act="pasnein" data-id="${a.id}" data-e="${evId}">Nein</button></span><span class="onlyprint">☐ Ja &nbsp; ☐ Nein</span></td></tr>`).join("")}</table>`:`<p class="small muted" style="margin:0">Keine offenen Anträge.</p>`}
+    ${hier.length?`<p class="small" style="margin:10px 0 4px"><b>Ergebnis an dieser Probe:</b></p><table class="t">${hier.map(a=>`<tr><td>${who(a)}</td><td style="text-align:right">${res(a)} <button class="btn sm ghost noprint" data-act="pasreset" data-id="${a.id}" title="Entscheid zurücksetzen">↺</button></td></tr>`).join("")}</table>`:""}
+    ${fr.length?`<details class="noprint" style="margin-top:8px"><summary class="small muted">Frühere Entscheide (${fr.length})</summary><table class="t">${fr.map(a=>`<tr><td>${who(a)}<div class="small muted">${fDateY(a.entscheid_am)}</div></td><td style="text-align:right">${res(a)}</td></tr>`).join("")}</table></details>`:""}
+    <p class="small muted noprint" style="margin:8px 0 0">«↻ Webling» holt neue Anträge. Nach dem Entscheid in Webling die Person in die Gruppe der Passivmitglieder verschieben.</p>`}
 async function loadBlatt(id){const el=$("#blatt");if(!el)return;let b;
   try{b=await rpc("chor_probenblatt",{p_code:S.code,p_event:id})}catch(e){el.innerHTML=`<p class="muted">${esc(e.message)}</p>`;return}
   const e=b.event,ord=x=>{const i=STIMMEN.indexOf(x.stimme);return i<0?9:i};
@@ -727,8 +739,10 @@ async function loadBlatt(id){const el=$("#blatt");if(!el)return;let b;
         ${b.absagen.length?`<p class="small" style="margin:8px 0 2px"><b>Abgemeldet für diese Probe:</b></p>${lst(b.absagen,x=>`<li>${nm(x)}${x.grund?` – ${esc(x.grund)}`:""}</li>`)}`:""}</div>
       <div class="card"><h3>🎂 Geburtstage seit der letzten Probe</h3>${lst(b.geburtstage,x=>`<li>${nm(x)} – ${D(x.datum).toLocaleDateString("de-CH",{day:"numeric",month:"long"})}: <b>${x.alter} Jahre</b></li>`)}</div>
     </div>
+    ${isV()&&!isVet()?`<div class="card" id="passiv"><h3>🤝 Aufnahme Passivmitglieder</h3><p class="small muted" style="margin:0">wird geladen …</p></div>`:""}
     ${b.offen.length?`<div class="card soft"><h3>Ohne Rückmeldung (${b.offen.length})</h3><p class="small" style="margin:0">${b.offen.map(x=>esc(x.name)).join(", ")}</p></div>`:""}
-    <p class="small muted">Erstellt ${new Date().toLocaleString("de-CH")} · Chor-App Männerchor Thun · vertraulich</p>`}
+    <p class="small muted">Erstellt ${new Date().toLocaleString("de-CH")} · Chor-App Männerchor Thun · vertraulich</p>`;
+  if(isV()&&!isVet())loadPassiv(id)}
 
 /* ---------- Ehrungen: Veteranen-Ernennungen (Regeln MCT, CVBO, BKGV, SCV) ---------- */
 const EHR_REGELN=[
@@ -1013,6 +1027,8 @@ function vVerwaltung(){if(!isV())return`<p class="muted">Nur für den ${VS()==="
     <input type="file" id="impfile" accept=".csv,.xlsx,.xls,text/csv" class="input"><label class="row small" style="margin-top:6px${isVet()?";display:none":""}"><input type="checkbox" id="impnur"> Bei Access-Daten: nur aktive Sänger (ohne Haken werden auch frühere Sänger mit ihrer History übernommen – als «ehemalig»)</label><label class="row small" style="margin-top:4px${isVet()?";display:none":""}"><input type="checkbox" id="impfun" checked> Bei Access-Daten: Funktionen aus «Geschichte» nach Vorstand &amp; Chargen übernehmen (alle, auch Ehemalige)</label>${S.busy?`<div class="note" style="margin-top:8px">⏳ ${esc(S.busy)}</div>`:""}${S.impInfo?`<div class="okmsg" style="margin-top:8px">${esc(S.impInfo)}</div>`:""}</div>
   <div class="card"${isVet()?" hidden":""}><h3>Teilnahmen aus SpielerPlus</h3><p class="small muted">Statistik-Export aus SpielerPlus (CSV) hochladen. Die Zu- und Absagen werden den Terminen am gleichen Datum zugeordnet. Fehlt ein Termin, wird er angelegt; gibt es an dem Tag genau einen anderen Termin, wird dessen Titel übernommen. Mehrfaches Importieren ist kein Problem.</p>
     <input type="file" id="spfile" accept=".csv,text/csv" class="input">${S.spInfo?`<div class="okmsg" style="margin-top:8px">${S.spInfo}</div>`:""}</div>
+  ${isVet()?"":`<div class="card"><h3>🤝 Anträge Passivmitglieder</h3><p class="small muted">Die Anträge kommen aus der Webling-Gruppe «Anträge Passiv» – direkt über die Webling-Schnittstelle oder als Export-Datei (Excel/CSV mit <code>Mitglieder ID</code>, <code>Vorname</code>, <code>Name</code>, <code>Ort</code>). Neue Anträge erscheinen im Probenblatt beim Präsidenten zum Entscheid Ja/Nein; bereits erfasste werden nicht doppelt angelegt.</p>
+    <button class="btn sm primary" data-act="pasweb" style="margin-bottom:8px">↻ Direkt aus Webling laden</button><p class="small muted" style="margin:0 0 4px">oder Export-Datei hochladen:</p><input type="file" id="pasfile" accept=".csv,.xlsx,.xls,text/csv" class="input">${S.pasInfo?`<div class="okmsg" style="margin-top:8px">${esc(S.pasInfo)}</div>`:""}</div>`}
   <div class="card soft small"><b>Datenschutz:</b> Adressen, Telefon und Geburtsjahr sehen nur die Person selbst und der Vorstand. Alle Aktiven sehen Name, Stimme und Geburtstag (Tag/Monat).</div>`}
 
 /* ---------- CSV-Import ---------- */
@@ -1236,6 +1252,11 @@ const A={
   plall:d=>{PL.sel=new Set(d.on==="1"?plCandidates().map(x=>x.id):[]);plSave();render()},
   go:d=>{closeModal();go(d.r)},close:()=>closeModal(),
   print:()=>printDoc(),
+  pasweb:async d=>{toast("Hole Anträge aus Webling …");try{const r=await fetch(WEBLING_FN,{method:"POST",headers:{"Content-Type":"application/json",apikey:SUPA.key},body:JSON.stringify({code:ccode()})});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||("Fehler "+r.status));
+    S.pasInfo=`✓ Webling: ${j.anzahl} in «Anträge Passiv», davon ${j.neu} neu.`;toast(S.pasInfo);if(d.e)loadPassiv(d.e);else render()}catch(e){toast(e.message)}},
+  pasja:d=>rpc("chor_passiv_entscheid",{p_code:S.code,p_id:d.id,p_entscheid:"ja",p_event:d.e||null}).then(()=>{toast("Aufgenommen ✓");loadPassiv(d.e)}).catch(e=>toast(e.message)),
+  pasnein:d=>rpc("chor_passiv_entscheid",{p_code:S.code,p_id:d.id,p_entscheid:"nein",p_event:d.e||null}).then(()=>{toast("Abgelehnt");loadPassiv(d.e)}).catch(e=>toast(e.message)),
+  pasreset:d=>{if(!confirm("Entscheid zurücksetzen (wieder offen)?"))return;const ev=route()[1];rpc("chor_passiv_entscheid",{p_code:S.code,p_id:d.id,p_entscheid:"offen"}).then(()=>loadPassiv(ev)).catch(e=>toast(e.message))},
   printbrief:d=>printBrief(d.n),
   ernennen:async d=>{const y=S.ehrJahr||new Date().getFullYear(),x=ehrData.find(p=>p.id===d.id),txt=`${d.t} ${y}`;if(!confirm(`${x.vorname} ${x.name} zum «${d.t}» ${y} ernennen?\nDer Eintrag kommt ins Stammblatt und in die History.`))return;
     try{await rpc("chor_history_save",{p_code:S.code,p_id:null,p_person:x.id,p_jahr:y,p_datum:null,p_art:"Ehrung",p_text:txt});
@@ -1270,7 +1291,7 @@ const A={
   rsvpno:d=>{const g=$("#grund").value;closeModal();call("chor_set_attendance",{p_event:d.id,p_status:"nein",p_grund:g},"Abgemeldet").catch(()=>{})},
   evnew:()=>evForm(null),evedit:d=>evForm(S.events.find(e=>e.id===d.id)),
   evsave:d=>{const v=id=>$(id).value,dt=x=>x?new Date(x).toISOString():null;if(!v("#fti").trim())return toast("Bitte einen Titel angeben");if(!v("#fs"))return toast("Bitte den Beginn angeben");
-    const dp=!d.id&&$("#dopush")?.checked,ttl=v("#fti"),st=v("#fs"),wk=d.id?0:+($("#fw")?.value||0);closeModal();call("chor_save_event",{p_id:d.id||null,p_typ:v("#ft"),p_titel:v("#fti"),p_start:dt(v("#fs")),p_ende:dt(v("#fe")),p_ort:v("#fo"),p_info:v("#fi"),p_anmeldeschluss:dt(v("#fa")),p_zaehlt:$("#fz").checked,p_wochen:wk,p_eintreffen:v("#fin")?dt(v("#fs").slice(0,11)+v("#fin")):null},"Termin gespeichert").then(()=>{if(dp)autoPush(wk?"📅 Neue Termine":"📅 Neuer Termin",`${ttl} – ${fDate(st)}, ${fTime(st)} Uhr${wk?` (und ${wk} weitere Wochen)`:""}`,"./#/termine")}).catch(()=>{})},
+    const zg=$("#fzg")?.value||null,dp=!d.id&&$("#dopush")?.checked,ttl=v("#fti"),st=v("#fs"),wk=d.id?0:+($("#fw")?.value||0);closeModal();call("chor_save_event",{p_id:d.id||null,p_typ:v("#ft"),p_titel:v("#fti"),p_start:dt(v("#fs")),p_ende:dt(v("#fe")),p_ort:v("#fo"),p_info:v("#fi"),p_anmeldeschluss:dt(v("#fa")),p_zaehlt:$("#fz").checked,p_wochen:wk,p_eintreffen:v("#fin")?dt(v("#fs").slice(0,11)+v("#fin")):null,p_zielgruppe:zg},"Termin gespeichert").then(()=>{if(dp&&zg!=="chargen")autoPush(wk?"📅 Neue Termine":"📅 Neuer Termin",`${ttl} – ${fDate(st)}, ${fTime(st)} Uhr${wk?` (und ${wk} weitere Wochen)`:""}`,"./#/termine")}).catch(()=>{})},
   evaction:d=>{const t={absagen:"Termin absagen?",reaktivieren:"Termin wieder aktivieren?",loeschen:"Termin endgültig löschen (inkl. Rückmeldungen)?",serie_loeschen:"Alle künftigen Termine dieser Serie löschen?"}[d.a];if(!confirm(t))return;
     const ev=S.events.find(e=>e.id===d.id);call("chor_event_action",{p_id:d.id,p_action:d.a},"Erledigt").then(()=>{if(d.a==="absagen"&&ev&&D(ev.start)>new Date()&&confirm("Absage als Push-Nachricht an alle senden?"))autoPush("❌ Abgesagt: "+ev.titel,`${fDate(ev.start)}, ${fTime(ev.start)} Uhr fällt aus.`,"./#/termin/"+ev.id);if(/loeschen/.test(d.a))go("termine")}).catch(()=>{})},
   preall:()=>{document.querySelectorAll(".prchk").forEach(c=>{const p=evPeople.find(x=>x.id===c.dataset.id);c.checked=p&&p.status==="ja"})},
@@ -1353,6 +1374,12 @@ document.addEventListener("change",e=>{const el=e.target;
   if(el.dataset.chg==="plyear"){PL.year=el.value;PL.sel=null;plSave();render();return}
   if(el.dataset.chg==="plscope"){PL.scope=el.value;PL.sel=null;plSave();render();return}
   if(el.id==="spfile"&&el.files[0]){const r=new FileReader();r.onload=()=>doSpImport(String(r.result));r.readAsText(el.files[0],"utf-8")}
+  if(el.id==="pasfile"&&el.files[0]){const f=el.files[0];const go2=txt=>{const R=Array.isArray(txt)?txt.map(r=>r.map(v=>v==null?"":String(v))):csvRows(txt);const hd=(R[0]||[]).map(h=>String(h).trim().toLowerCase()),c=(...n)=>{for(const x of n){const i=hd.indexOf(x);if(i>=0)return i}return-1};
+      const ix={mid:c("mitglieder id","mitglieder-id","member_id","id"),v:c("vorname"),n:c("name","nachname"),o:c("ort","wohnort"),e:c("antrag","eingang","eintrittsdatum","erfasst")};if(ix.n<0)return toast("Spalte «Name» fehlt");
+      const rows=R.slice(1).map(r=>({member_id:ix.mid>=0?String(r[ix.mid]||"").trim():"",vorname:ix.v>=0?String(r[ix.v]||"").trim():"",name:String(r[ix.n]||"").trim(),ort:ix.o>=0?String(r[ix.o]||"").trim():"",eingang:ix.e>=0?pDate(String(r[ix.e]||"")):null})).filter(x=>x.name);
+      if(!rows.length)return toast("Keine Anträge gefunden");
+      rpc("chor_passiv_import",{p_code:S.code,p_rows:rows}).then(j=>{S.pasInfo=`✓ ${j.neu} neue Anträge, ${j.vorhanden} bereits erfasst.`;render();toast("Anträge übernommen")}).catch(e=>toast(e.message))};
+    if(/\.xlsx?$/i.test(f.name))readXlsx(f).then(go2).catch(e=>toast(e.message));else{const r=new FileReader();r.onload=()=>go2(String(r.result));r.readAsText(f,"utf-8")}}
   if(el.id==="impfile"&&el.files[0]){const f=el.files[0];if(/\.xlsx?$/i.test(f.name)){readXlsx(f).then(doImport).catch(e=>toast(e.message))}else{const r=new FileReader();r.onload=()=>doImport(String(r.result));r.readAsText(f,"utf-8")}}
   if(el.dataset.chg==="sjahr"){S.statJahr=+el.value;render()}
   if(el.dataset.chg==="noten"){const on=el.checked;rpc("chor_set_noten",{p_code:S.code,p_person:el.dataset.id,p_on:on}).then(async()=>{await load();render();toast(on?"Noten-Berechtigung erteilt":"Noten-Berechtigung entfernt")}).catch(err=>{el.checked=!on;toast(err.message)})}
