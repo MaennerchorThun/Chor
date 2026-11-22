@@ -329,7 +329,7 @@ const LOGO="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANAAAABpCAYAAABLYa3JAA
 /* ================= MCT Chor-App =================
    Für die aktiven Sänger des Männerchors Thun. Daten in Supabase (gleiche Datenbank wie die Herrenabend-App),
    Zugriff nur über geprüfte Funktionen mit dem persönlichen Code. Dateien im privaten Speicher «chor». */
-const APP_VERSION="3.32"; /* bei jeder Änderung erhöhen */
+const APP_VERSION="3.33"; /* bei jeder Änderung erhöhen */
 const SUPA={url:"https://tvygwnawrkxdhzghxgfv.supabase.co",key:"sb_publishable_yO40Pv19n6Wq0Wh769VZCg_q9BRTBvd"};
 const FILES_FN=SUPA.url+"/functions/v1/chor-files",WEBLING_FN=SUPA.url+"/functions/v1/chor-webling";
 const PUSH_FN=SUPA.url+"/functions/v1/chor-push",VAPID_PUBLIC="BNWkxTW3k3B7aTQY4r7nJ5VxkPL57BxlhuReulrRmmi8KPKTEZeYG52AFhSLN5o5Gs-Lhr5fqoMqBqqpBMyywEo";
@@ -716,11 +716,11 @@ async function loadPassiv(evId){const el=$("#passiv");if(!el)return;let L=[];try
   const who=a=>`<b>${esc(a.name)} ${esc(a.vorname)}</b><div class="small">${a.ort?`🏠 ${esc([a.plz,a.ort].filter(Boolean).join(" "))}`:""}${a.beruf?` · 💼 ${esc(a.beruf)}`:""}${a.goetti?` · 🤝 Götti: ${esc(a.goetti)}`:""}</div>`;
   const wst=a=>a.entscheid!=="ja"?"":a.webling_ok?`<div class="small muted">✓ in Webling eingetragen</div>`:`<div class="small noprint" style="color:#b3261e">${a.webling_fehler?"⚠ Webling: "+esc(a.webling_fehler):"⏳ noch nicht in Webling"} <button class="btn sm" data-act="pasweb2" data-id="${a.id}" data-e="${evId}">In Webling eintragen</button></div>`;
   const res=a=>a.entscheid==="ja"?`<span class="chip g">✓ Ja – aufgenommen</span>`:`<span class="chip w">✗ Nein</span>`;
-  el.innerHTML=`<h3>🤝 Aufnahme Passivmitglieder</h3><div class="row between" style="align-items:flex-start;gap:8px"><p class="small muted" style="margin:0 0 8px">Anträge aus Webling («Anträge Passiv»). Der Präsident stellt sie vor, der Chor entscheidet.</p><button class="btn sm noprint" data-act="pasweb" data-e="${evId}" style="flex:none">↻ Webling</button></div>
+  el.innerHTML=`<h3>🤝 Aufnahme Passivmitglieder</h3><div class="row between" style="align-items:flex-start;gap:8px"><p class="small muted" style="margin:0 0 8px">Anträge aus Webling («Anträge Passiv»), beim Öffnen automatisch aktualisiert. Der Präsident stellt sie vor, der Chor entscheidet.</p><button class="btn sm noprint" data-act="pasweb" data-e="${evId}" style="flex:none">↻ Webling</button></div>
     ${off.length?`<table class="t">${off.map(a=>`<tr><td>${who(a)}<div class="small muted">Antrag vom ${fDateY(a.eingang)}</div></td><td style="white-space:nowrap;text-align:right"><span class="noprint"><button class="btn sm primary" data-act="pasja" data-id="${a.id}" data-e="${evId}">Ja</button> <button class="btn sm" data-act="pasnein" data-id="${a.id}" data-e="${evId}">Nein</button></span><span class="onlyprint">☐ Ja &nbsp; ☐ Nein</span></td></tr>`).join("")}</table>`:`<p class="small muted" style="margin:0">Keine offenen Anträge.</p>`}
     ${hier.length?`<p class="small" style="margin:10px 0 4px"><b>Ergebnis an dieser Probe:</b></p><table class="t">${hier.map(a=>`<tr><td>${who(a)}</td><td style="text-align:right">${res(a)} <button class="btn sm ghost noprint" data-act="pasreset" data-id="${a.id}" title="Entscheid zurücksetzen">↺</button>${wst(a)}</td></tr>`).join("")}</table>`:""}
     ${fr.length?`<details class="noprint" style="margin-top:8px"><summary class="small muted">Frühere Entscheide (${fr.length})</summary><table class="t">${fr.map(a=>`<tr><td>${who(a)}<div class="small muted">${fDateY(a.entscheid_am)}</div></td><td style="text-align:right">${res(a)}${wst(a)}</td></tr>`).join("")}</table></details>`:""}
-    <p class="small muted noprint" style="margin:8px 0 0">«↻ Webling» holt neue Anträge. Bei «Ja» trägt die App die Person in Webling automatisch ein: Gruppe «Passivmitglieder» statt «Anträge Passiv», «Mitglied seit» = Datum der Probe, Mitgliedschaft «Passivmitglied».</p>`}
+    <p class="small muted noprint" style="margin:8px 0 0">Bei «Ja» trägt die App die Person in Webling automatisch ein: Gruppe «Passivmitglieder» statt «Anträge Passiv», «Mitglied seit» = Datum der Probe, Mitgliedschaft «Passivmitglied».</p>`}
 async function loadBlatt(id){const el=$("#blatt");if(!el)return;let b;
   try{b=await rpc("chor_probenblatt",{p_code:S.code,p_event:id})}catch(e){el.innerHTML=`<p class="muted">${esc(e.message)}</p>`;return}
   const e=b.event,ord=x=>{const i=STIMMEN.indexOf(x.stimme);return i<0?9:i};
@@ -743,7 +743,11 @@ async function loadBlatt(id){const el=$("#blatt");if(!el)return;let b;
     ${isV()&&!isVet()?`<div class="card" id="passiv"><h3>🤝 Aufnahme Passivmitglieder</h3><p class="small muted" style="margin:0">wird geladen …</p></div>`:""}
     ${b.offen.length?`<div class="card soft"><h3>Ohne Rückmeldung (${b.offen.length})</h3><p class="small" style="margin:0">${b.offen.map(x=>esc(x.name)).join(", ")}</p></div>`:""}
     <p class="small muted">Erstellt ${new Date().toLocaleString("de-CH")} · Chor-App Männerchor Thun · vertraulich</p>`;
-  if(isV()&&!isVet())loadPassiv(id)}
+  if(isV()&&!isVet()){loadPassiv(id).then(()=>pasSync(id))}}
+/* Probenblatt: Anträge beim Öffnen still aus Webling nachladen */
+async function pasSync(evId){try{const r=await fetch(WEBLING_FN,{method:"POST",headers:{"Content-Type":"application/json",apikey:SUPA.key},body:JSON.stringify({code:ccode()})});const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(j.error||("Fehler "+r.status));if($("#passiv")&&route()[0]==="blatt")await loadPassiv(evId);if(j.neu)toast(`${j.neu} neue${j.neu===1?"r":""} Antrag aus Webling`)}
+  catch(e){const el=$("#passiv");if(el&&!el.querySelector(".pasnote"))el.insertAdjacentHTML("beforeend",`<p class="small muted noprint pasnote" style="margin:6px 0 0">Webling gerade nicht erreichbar (${esc(e.message)}) – angezeigt wird der letzte Stand.</p>`)}}
 
 /* ---------- Ehrungen: Veteranen-Ernennungen (Regeln MCT, CVBO, BKGV, SCV) ---------- */
 const EHR_REGELN=[
