@@ -327,7 +327,7 @@ const LOGO="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANAAAABpCAYAAABLYa3JAA
 /* ================= MCT Chor-App =================
    Für die aktiven Sänger des Männerchors Thun. Daten in Supabase (gleiche Datenbank wie die Herrenabend-App),
    Zugriff nur über geprüfte Funktionen mit dem persönlichen Code. Dateien im privaten Speicher «chor». */
-const APP_VERSION="3.25"; /* bei jeder Änderung erhöhen */
+const APP_VERSION="3.27"; /* bei jeder Änderung erhöhen */
 const SUPA={url:"https://tvygwnawrkxdhzghxgfv.supabase.co",key:"sb_publishable_yO40Pv19n6Wq0Wh769VZCg_q9BRTBvd"};
 const FILES_FN=SUPA.url+"/functions/v1/chor-files";
 const PUSH_FN=SUPA.url+"/functions/v1/chor-push",VAPID_PUBLIC="BNWkxTW3k3B7aTQY4r7nJ5VxkPL57BxlhuReulrRmmi8KPKTEZeYG52AFhSLN5o5Gs-Lhr5fqoMqBqqpBMyywEo";
@@ -1205,6 +1205,17 @@ function printDoc(){const app=$("#app");if(!app)return;const h1=app.querySelecto
   const prevTitle=document.title;document.title=`MCT ${title||"Liste"} ${new Date().toISOString().slice(0,10)}`;
   const done=()=>{document.title=prevTitle;window.removeEventListener("afterprint",done)};window.addEventListener("afterprint",done);
   setTimeout(()=>window.print(),50)}
+/* Gratulationstexte: jedes Mal anders zusammengesetzt (Anfang, Wunsch, Chor-Satz, Gruss) */
+const cgPick=a=>a[Math.floor(Math.random()*a.length)];
+function cgText(m,age,late){const A=age?age+". ":"",rund=age&&age%10===0,halb=age&&age%5===0&&!rund;
+  const fem=(S.board||[]).some(b=>b.person_id===m.id&&!b.bis&&/(in|frau)\b/i.test(b.funktion||""));
+  const anf=late?[`Nachträglich herzliche Gratulation zum ${A}Geburtstag! 🎉`,`Etwas verspätet, aber nicht weniger herzlich: alles Gute zum ${A}Geburtstag! 🎂`,`Auch wenn ich etwas spät dran bin: herzlichen Glückwunsch zum ${A}Geburtstag! 🎉`,`Besser spät als nie: alles Liebe zum ${A}Geburtstag! 🥂`]
+    :[`Herzliche Gratulation zum ${A}Geburtstag! 🎉`,`Alles Gute zum ${A}Geburtstag! 🎂`,`Happy Birthday! 🎉 Zum ${A}Geburtstag gratuliere ich dir ganz herzlich.`,`Zum ${A}Geburtstag die allerbesten Wünsche! 🥂`,`Ein Hoch auf dich – herzlichen Glückwunsch zum ${A}Geburtstag! 🍾`,`Heute ist dein Tag: alles Liebe zum ${A}Geburtstag! 🎈`];
+  const extra=rund?[`Ein runder Geburtstag – das verdient ein ganz besonderes Ständchen! 🎶`,`${age} Jahre – ein schönes Jubiläum, auf das wir gerne anstossen!`,`Zum runden Geburtstag ganz besonders herzliche Glückwünsche!`]:halb?[`Ein halbrunder Geburtstag – auch das ist ein Grund zum Feiern!`,`${age} Jahre – darauf stossen wir an!`]:[""];
+  const wunsch=[`Ich wünsche dir alles Gute, Gesundheit und viel Freude im neuen Lebensjahr.`,`Geniess deinen Tag im Kreis deiner Liebsten und lass dich so richtig feiern.`,`Für das neue Lebensjahr wünsche ich dir Gesundheit, Glück und viele schöne Momente.`,`Möge dir das neue Jahr viel Freude, gute Gesundheit und ganz viel Musik bringen.`,`Ich hoffe, du hast einen wunderbaren Tag und lässt es dir richtig gut gehen.`,`Bleib gesund, munter und genau so, wie du bist.`,`Ich wünsche dir einen Tag voller Sonnenschein, guter Gesellschaft und feinem Essen.`];
+  const chor=[`Und weiterhin viel Freude beim Singen!`,`Schön, dass du bei uns mitsingst – auf viele weitere gemeinsame Proben!`,`Ich freue mich schon auf die nächste Probe mit dir. 🎵`,`Auf viele weitere schöne Stunden im Chor!`,`Danke für deine Stimme in unserem Chor.`,`Bis bald an der Probe – dann stossen wir darauf an!`];
+  const gruss=["Herzliche Grüsse","Liebe Grüsse","Herzlich","Mit herzlichen Grüssen","Beste Grüsse","En liebe Gruess"];
+  return`${fem?"Liebe":"Lieber"} ${m.vorname}\n\n${cgPick(anf)}${(()=>{const e=cgPick(extra);return e?" "+e:""})()} ${cgPick(wunsch)} ${cgPick(chor)}\n\n${cgPick(gruss)}\n${S.me.vorname}`}
 const PBTN=`<button class="btn sm noprint" data-act="print" title="Als PDF speichern oder drucken">🖨 PDF / Drucken</button>`;
 const A={
   pushwa:()=>{const t=$("#pt").value.trim(),b=$("#pb").value.trim();if(!t&&!b)return toast("Bitte zuerst Titel und Text eingeben");waShare(`*${t}*${b?"\n"+b:""}\n\n${chorName()} · Chor-App: https://chor.maennerchorthun.ch/`)},
@@ -1282,16 +1293,17 @@ const A={
   ppin:d=>call("chor_post_action",{p_id:d.id,p_action:"pin"}).catch(()=>{}),
   congrats:async d=>{const m=P(d.id);const b=bdays().find(x=>x.m.id===d.id);const late=b&&b.days!==0&&b.ago>0;
     const age=m.jg?((b&&late?new Date().getFullYear():b?b.d.getFullYear():new Date().getFullYear())-m.jg):null;
-    const txt=`Lieber ${m.vorname}\n\n${late?"Nachträglich ":""}herzliche Gratulation zum ${age?age+". ":""}Geburtstag! 🎉 Ich wünsche dir alles Gute, Gesundheit und viel Freude im neuen Lebensjahr – und weiterhin viel Freude beim Singen.\n\nHerzliche Grüsse\n${S.me.vorname}`;
-    modal(`<h2>🎂 ${esc(full(m))}${age?` – ${age} Jahre`:""}</h2><textarea id="ctxt" class="input" style="min-height:150px">${esc(txt)}</textarea>
+    S.cg={m,age,late};const txt=cgText(m,age,late);
+    modal(`<h2>🎂 ${esc(full(m))}${age?` – ${age} Jahre`:""}</h2><textarea id="ctxt" class="input" style="min-height:150px">${esc(txt)}</textarea><button class="btn sm ghost" data-act="congratsnew" style="margin-top:4px">🔀 Anderer Text</button>
       <div style="display:grid;gap:8px;margin-top:10px"><button class="btn primary" data-act="congratsend" data-id="${d.id}">🎵 In der Chor-App gratulieren <span class="small" style="font-weight:400">(Chat & Startseite)</span></button><div id="cways" class="small muted">Weitere Wege werden geladen …</div></div>
       <button class="btn ghost" data-act="close" style="margin-top:10px;width:100%">Schliessen</button>`);
     let c=null;try{c=await rpc("chor_bday_contact",{p_code:S.code,p_person:d.id})}catch(e){}
     const box=$("#cways");if(!box)return;const tel=c&&c.tel?String(c.tel).replace(/[^\d+]/g,""):"";const wa=tel?(tel.startsWith("00")?"+"+tel.slice(2):tel.startsWith("0")?"+41"+tel.slice(1):tel).replace("+",""):"";
     box.className="";box.style.cssText="display:grid;gap:8px";
     box.innerHTML=[wa?`<a class="btn" data-cw="wa" target="_blank" rel="noopener" href="https://wa.me/${wa}?text=">WhatsApp</a>`:"",tel?`<a class="btn" data-cw="sms" href="sms:${tel}?&body=">SMS</a>`:"",
-      c&&c.email?`<a class="btn" data-cw="mail" href="mailto:${esc(c.email)}?subject=${encodeURIComponent("Herzliche Gratulation"+(age?" zum "+age+". Geburtstag":""))}&body=">E-Mail</a>`:"",tel?`<a class="btn ghost" href="tel:${tel}">Anrufen</a>`:""].filter(Boolean).join("")||`<p class="small muted" style="margin:0">Keine Telefonnummer oder E-Mail hinterlegt.</p>`;
+      c&&c.email?`<a class="btn" data-cw="mail" href="mailto:${esc(c.email)}?subject=${encodeURIComponent(cgPick(["Herzliche Gratulation","Alles Gute","Happy Birthday","Herzlichen Glückwunsch"])+(age?" zum "+age+". Geburtstag":" zum Geburtstag"))}&body=">E-Mail</a>`:"",tel?`<a class="btn ghost" href="tel:${tel}">Anrufen</a>`:""].filter(Boolean).join("")||`<p class="small muted" style="margin:0">Keine Telefonnummer oder E-Mail hinterlegt.</p>`;
     const upd=()=>{const t=encodeURIComponent($("#ctxt").value);box.querySelectorAll("a[data-cw]").forEach(a=>{a.href=a.href.replace(/(text=|body=)[^&]*$/,"$1"+t)})};upd();$("#ctxt").oninput=upd},
+  congratsnew:()=>{const c=S.cg;if(!c)return;const el=$("#ctxt");let t,i=0;do{t=cgText(c.m,c.age,c.late)}while(t===el.value&&++i<5);el.value=t;if(el.oninput)el.oninput()},
   congratsend:d=>{const t=$("#ctxt").value;closeModal();call("chor_congratulate",{p_person:d.id,p_text:t},"Gratulation gesendet 🎉").catch(()=>{})},
   upnew:()=>upForm(),upload:()=>doUpload(),
   open:async d=>{const x=S.files.find(f=>f.id===d.id);const w=window.open("","_blank");try{const u=await urlFor(x);if(w)w.location=u;else location.href=u}catch(e){if(w)w.close();toast(e.message)}},
@@ -1487,6 +1499,29 @@ function printBrief(name){const b=$("#brief");if(!b)return;let root=$("#printroo
   document.head.appendChild(st);const prev=document.title;document.title=name||"Einladung";
   const done=()=>{document.title=prev;st.remove();window.removeEventListener("afterprint",done)};window.addEventListener("afterprint",done);setTimeout(()=>window.print(),50)}
 
+/* PDF der Einladung im Browser erzeugen (html2canvas + jsPDF), Fusszeile als Text */
+let pdfLibP=null;const loadPdfLib=()=>pdfLibP||(pdfLibP=Promise.all(["https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js","https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"].map(src=>new Promise((ok,no)=>{const sc=document.createElement("script");sc.src=src;sc.onload=ok;sc.onerror=()=>no(new Error("PDF-Funktion konnte nicht geladen werden"));document.head.appendChild(sc)}))).catch(e=>{pdfLibP=null;throw e}));
+const blobB64=b=>new Promise((ok,no)=>{const fr=new FileReader();fr.onload=()=>ok(String(fr.result).split(",")[1]);fr.onerror=()=>no(new Error("PDF konnte nicht gelesen werden"));fr.readAsDataURL(b)});
+async function grEinPdf(g,x){await loadPdfLib();const tmp=document.createElement("div");tmp.innerHTML=vGEin(g,x,S.gd[g]);const br=tmp.querySelector(".brief");
+  const [fl,fc]=JSON.parse(br.dataset.foot||'["",""]');br.querySelector(".bf")?.remove();br.removeAttribute("id");
+  const wrap=document.createElement("div");wrap.style.cssText="position:fixed;left:-10000px;top:0;width:794px;background:#fff";
+  br.style.cssText="border:0;border-radius:0;max-width:none;width:794px;box-sizing:border-box;padding:0 60px 0 76px;overflow:visible;margin:0";
+  wrap.appendChild(br);document.body.appendChild(wrap);
+  try{const img=br.querySelector("img");if(img&&!img.complete)await new Promise(r=>{img.onload=img.onerror=r});
+    const cv=await window.html2canvas(br,{scale:2,backgroundColor:"#ffffff",logging:false});
+    const pdf=new window.jspdf.jsPDF({unit:"mm",format:"a4",compress:true}),top=14,bot=22,pxmm=cv.width/210,pagePx=Math.floor((297-top-bot)*pxmm);
+    /* Seitenumbruch nicht mitten in eine Zeile: an Zeilengrenzen der Tabellen ausrichten */
+    const bTop=br.getBoundingClientRect().top,cuts=[...br.querySelectorAll("tr")].map(r=>Math.round((r.getBoundingClientRect().bottom-bTop)*2));
+    let y=0,pg=0;while(y<cv.height-2){let h=Math.min(pagePx,cv.height-y);if(y+h<cv.height){const c=cuts.filter(c=>c>y+pagePx*0.5&&c<=y+pagePx).pop();if(c)h=c-y}
+      if(pg)pdf.addPage();const pc=document.createElement("canvas");pc.width=cv.width;pc.height=h;const cx=pc.getContext("2d");cx.fillStyle="#fff";cx.fillRect(0,0,pc.width,h);cx.drawImage(cv,0,y,cv.width,h,0,0,cv.width,h);
+      pdf.addImage(pc.toDataURL("image/jpeg",0.9),"JPEG",0,top,210,h/pxmm);pg++;
+      const fy=297-bot+7,ls=fl.split("\n");pdf.setFontSize(8);pdf.setFont("helvetica","bold");pdf.text(ls[0]||"",20,fy);pdf.setFont("helvetica","normal");pdf.text(ls.slice(1),20,fy+3.4);
+      pdf.text(fc,105,fy+6.8,{align:"center"});pdf.text(String(pg),194,fy+6.8,{align:"right"});y+=h}
+    pdf.setProperties({title:fc,author:"Männerchor Thun 1829"});return pdf.output("blob")}finally{wrap.remove()}}
+async function grDocPut(g,sid,blob,filename,titel){const u=await filesFn({action:"gupload",g,filename});
+  const r=await fetch(u.signedUrl,{method:"PUT",headers:{apikey:SUPA.key,"x-upsert":"false","Content-Type":"application/pdf"},body:blob});if(!r.ok)throw new Error("Upload fehlgeschlagen ("+r.status+")");
+  await rpc("gremium_doc_add",{p_code:S.code,p_g:g,p_sitzung:sid||null,p_titel:titel,p_path:u.path,p_mime:"application/pdf",p_size:blob.size})}
+
 async function grDocUpload(g,sid){const fl=[...($("#gdfile")?.files||[])];if(!fl.length)return toast("Bitte Dateien wählen");let ok=0;
   for(const f of fl){if(f.size>50*1048576){toast(`${f.name}: grösser als 50 MB`);continue}
     try{toast(`Lade ${f.name} …`);const u=await filesFn({action:"gupload",g,filename:f.name});
@@ -1532,13 +1567,28 @@ Object.assign(A,{
   gdup:d=>grDocUpload(d.g,d.s||null),
   gdopen:async d=>{const w=window.open("","_blank");try{const j=await filesFn({action:"gurl",id:d.id});if(w)w.location=j.url;else location.href=j.url}catch(e){if(w)w.close();toast(e.message)}},
   gddel:async d=>{if(!confirm("Dokument löschen?"))return;try{await filesFn({action:"gdelete",id:d.id});await grLoad(d.g,true);render();toast("Gelöscht")}catch(e){toast(e.message)}},
-  grmail:async d=>{const g=d.g,x=S.gd[g].sitzungen.find(s=>s.id===d.id),ids=S.gd[g].personen||[];if(!ids.length)return toast("Keine Mitglieder");
-    const tr=(x.traktanden||[]).map((t,i)=>`${i+1}. ${t.t}${t.v?" ("+t.v+")":""}${(t.u||[]).map((u,j)=>`\n   ${i+1}.${j+1}. ${u}`).join("")}`).join("\n");
-    const text=`Lieber {vorname}\n\nIch lade dich herzlich ein zur ${grTitle(g,x)}:\n\n${grDate(x.start)}, ${fTime(x.start)} Uhr\n${x.ort||""}\n\nTraktanden\n${tr}\n\nHerzliche Grüsse\n${S.me.vorname}`;
-    if(!confirm(`Einladung an ${ids.length} Mitglieder des Gremiums per E-Mail senden?`))return;
-    try{const j=await rpc("chor_mail_send",{p_code:S.code,p_persons:ids,p_subject:`Einladung zur ${grTitle(g,x)} – ${fDateY(x.start)}`,p_text:text,p_test:false});
-      if(x.status==="geplant")await rpc("gremium_sitzung_save",{p_code:S.code,p_g:g,p_id:x.id,p_data:{status:"eingeladen"}});await grLoad(g,true);render();
-      toast(`Einladung an ${j.sent} gesendet${(j.ohne_mail||[]).length?` · ohne E-Mail: ${j.ohne_mail.join(", ")}`:""}`)}catch(e){toast(e.message)}}
+  grmail:d=>{const g=d.g,x=S.gd[g].sitzungen.find(s=>s.id===d.id),n=(S.gd[g].personen||[]).length;if(!n)return toast("Keine Mitglieder");
+    const ein=grEinName(g,x),text=`Lieber {vorname}\n\nIch lade dich herzlich ein zur ${grTitle(g,x)}:\n\n${grDate(x.start)}, ${fTime(x.start)} Uhr\n${x.ort||""}\n\nDie Einladung mit der Traktandenliste findest du im Anhang.\n\nHerzliche Grüsse\n${S.me.vorname}`;
+    modal(`<h2>Einladung mailen</h2><p class="small muted" style="margin:0 0 8px">An ${n} Mitglieder und Gäste des Gremiums · Anhang: 📎 ${esc(ein)}.pdf</p>
+      <div style="display:grid;gap:6px"><label class="small muted">Betreff</label><input id="gmS" class="input" value="${esc(`Einladung zur ${grTitle(g,x)} – ${fDateY(x.start)}`)}">
+      <label class="small muted">Text («Lieber {vorname}» wird pro Person ersetzt, bei Frauen «Liebe»)</label><textarea id="gmT" class="input" rows="11">${esc(text)}</textarea>
+      <label class="row small" style="gap:6px"><input type="checkbox" id="gmA" checked> PDF zusätzlich unter «Dokumente zur Sitzung» ablegen</label>
+      <div id="gmres"></div>
+      <div class="row" style="gap:6px;flex-wrap:wrap;justify-content:flex-end"><button class="btn ghost" data-act="close">Abbrechen</button><button class="btn" data-act="grmailgo" data-g="${g}" data-id="${x.id}" data-t="1">Testmail an mich</button><button class="btn primary" data-act="grmailgo" data-g="${g}" data-id="${x.id}">An alle senden</button></div></div>`)},
+  grmailgo:async d=>{const g=d.g,x=S.gd[g].sitzungen.find(s=>s.id===d.id),test=d.t==="1",n=(S.gd[g].personen||[]).length,res=$("#gmres");
+    const subject=$("#gmS").value.trim(),text=$("#gmT").value,arch=$("#gmA").checked,ein=grEinName(g,x);
+    if(!subject||!text.trim())return toast("Betreff und Text ausfüllen");
+    if(!test&&!confirm(`Einladung mit PDF an ${n} Personen senden?`))return;
+    document.querySelectorAll('[data-act="grmailgo"]').forEach(b=>b.disabled=true);
+    try{res.innerHTML=`<p class="small">PDF wird erstellt …</p>`;const blob=await grEinPdf(g,x),b64=await blobB64(blob);
+      res.innerHTML=`<p class="small">Versand läuft …</p>`;
+      const j=await rpc("gremium_mail_einladung",{p_code:S.code,p_g:g,p_sitzung:x.id,p_subject:subject,p_text:text,p_pdf:b64,p_filename:ein+".pdf",p_test:test});
+      if(test){res.innerHTML=`<div class="okmsg">✓ Testmail mit PDF an dich gesendet</div>`;document.querySelectorAll('[data-act="grmailgo"]').forEach(b=>b.disabled=false);return}
+      if(arch)try{await grDocPut(g,x.id,blob,ein+".pdf",ein)}catch(e){toast("Ablage: "+e.message)}
+      if(x.status==="geplant")await rpc("gremium_sitzung_save",{p_code:S.code,p_g:g,p_id:x.id,p_data:{status:"eingeladen"}});
+      closeModal();await grLoad(g,true);render();
+      toast(`Einladung an ${j.sent} gesendet${(j.ohne_mail||[]).length?` · ohne E-Mail: ${j.ohne_mail.join(", ")}`:""}`)}
+    catch(e){res.innerHTML=`<div class="note">${esc(e.message)}</div>`;document.querySelectorAll('[data-act="grmailgo"]').forEach(b=>b.disabled=false)}},
 });
 document.addEventListener("change",e=>{const el=e.target;if(el.dataset&&el.dataset.chg==="grstatus")grCall(el.dataset.g,"gremium_sitzung_save",{p_id:el.dataset.id,p_data:{status:el.value}},"Status: "+GR_ST[el.value]).catch(()=>{});
   if(el.dataset&&el.dataset.chg==="muko"){call("chor_board_muko",{p_id:el.dataset.id,p_on:el.checked},el.checked?"In der MUKO":"Aus MUKO entfernt").catch(()=>{})}});
