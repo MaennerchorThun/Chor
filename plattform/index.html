@@ -327,7 +327,7 @@ const LOGO0="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvM
 /* ================= Chor-Plattform (White-Label der Chor-App) =================
    Ein Chor = ein Mandant. Branding (Name, Logo, Farbe) kommt aus der Datenbank (cp.tenants).
    Daten im abgeschotteten Bereich «cp» (Zeilenschutz pro Mandant), Zugriff nur über cp_-Funktionen mit dem persönlichen Code. */
-const APP_VERSION="1.5"; /* bei jeder Änderung erhöhen */
+const APP_VERSION="1.6"; /* bei jeder Änderung erhöhen */
 const SUPA={url:"https://tvygwnawrkxdhzghxgfv.supabase.co",key:"sb_publishable_yO40Pv19n6Wq0Wh769VZCg_q9BRTBvd"};
 const FILES_FN=SUPA.url+"/functions/v1/cp-files";
 const PUSH_FN=SUPA.url+"/functions/v1/cp-push",VAPID_PUBLIC="BNWkxTW3k3B7aTQY4r7nJ5VxkPL57BxlhuReulrRmmi8KPKTEZeYG52AFhSLN5o5Gs-Lhr5fqoMqBqqpBMyywEo";
@@ -647,6 +647,19 @@ async function prListSave(){const ids=new Set([...document.querySelectorAll(".pr
   const rows=evPeople.map(p=>({id:p.id,praesent:ids.has(p.id)?true:abs?false:cur(p.id)}));
   try{await rpc("chor_set_presence",{p_code:S.code,p_event:PRL.id,p_rows:rows})}catch(e){return toast(e.message)}
   closeModal();toast(`Präsenz gespeichert: ${ids.size} anwesend`);statData=null;PRL=null;try{await load()}catch(_){}render()}
+/* ---------- Terminserien: wöchentlich oder monatlich am n. Wochentag (wie cp_chor_save_event) ---------- */
+const WTAG=["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
+function serDates(start,rh,k){const s=new Date(start);if(isNaN(s))return[];const out=[],nth=Math.ceil(s.getDate()/7),dow=s.getDay();
+  for(let i=0;i<=k;i++){let d;if(rh==="monat"){const m=new Date(s.getFullYear(),s.getMonth()+i,1);d=new Date(m);d.setDate(1+((dow-m.getDay()+7)%7));
+      if(nth>=5){d.setDate(d.getDate()+28);if(d.getMonth()!==m.getMonth())d.setDate(d.getDate()-7)}else d.setDate(d.getDate()+7*(nth-1))}
+    else{d=new Date(s);d.setDate(s.getDate()+7*i)}d.setHours(s.getHours(),s.getMinutes(),0,0);out.push(d)}return out}
+function serLabel(start,rh){const s=new Date(start);if(isNaN(s))return"";const nth=Math.ceil(s.getDate()/7);
+  return rh==="monat"?`jeden ${nth>=5?"letzten":nth+"."} ${WTAG[s.getDay()]} im Monat`:`jeden ${WTAG[s.getDay()]}`}
+function serHint(){const rh=$("#frh")?.value,box=$("#frbox"),h=$("#frhint");if(!box)return;box.style.display=rh?"":"none";if(!rh||!h)return;
+  const fw=$("#fw");if(+fw.value<=0)fw.value=rh==="monat"?11:12;const k=Math.min(60,Math.max(0,+fw.value||0)),ds=serDates($("#fs").value,rh,k);if(!ds.length){h.textContent="";return}
+  h.innerHTML=`${serLabel($("#fs").value,rh)}, ${fTime(ds[0])} Uhr · ${k+1} Termine: ${ds.slice(0,4).map(d=>fDateY(d)).join(", ")}${ds.length>4?` … bis ${fDateY(ds[ds.length-1])}`:""}`}
+document.addEventListener("change",e=>{if(["frh","fs","fw"].includes(e.target.id))serHint()});
+document.addEventListener("input",e=>{if(e.target.id==="fw")serHint()});
 function evForm(e){const d=e||{};const st=d.start?isoLocal(d.start):isoLocal(new Date(new Date().setHours(isVet()?18:19,isVet()?0:30,0,0)+864e5));
   modal(`<h2>${e?"Termin bearbeiten":"Neuer Termin"}</h2><div style="display:grid;gap:8px">
     <select id="ft" class="input">${Object.entries(TYP).map(([k,v])=>`<option value="${k}" ${d.typ===k?"selected":""}>${v.ic} ${v.l}</option>`).join("")}</select>
@@ -658,7 +671,8 @@ function evForm(e){const d=e||{};const st=d.start?isoLocal(d.start):isoLocal(new
     <textarea id="fi" class="input" placeholder="Infos (Treffpunkt, Kleidung, Noten …)">${esc(d.info||"")}</textarea>
     <label class="small muted">Anmeldeschluss (optional)</label><input id="fa" class="input" type="datetime-local" value="${d.anmeldeschluss?isoLocal(d.anmeldeschluss):""}">
     <label class="row small"><input type="checkbox" id="fz" ${d.zaehlt===false?"":"checked"}> zählt für die Präsenz-Statistik</label>
-    ${e?"":pushBox()}${e?"":`<label class="small muted">Wöchentlich wiederholen (z.B. Proben): Anzahl weitere Wochen</label><input id="fw" class="input" type="number" min="0" max="60" value="0">`}
+    ${e?"":pushBox()}${e?"":`<label class="small muted">Wiederholen</label><select id="frh" class="input"><option value="">nicht wiederholen</option><option value="woche">wöchentlich</option><option value="monat">monatlich am gleichen Wochentag (z.B. 1. Montag)</option></select>
+    <div id="frbox" style="display:none"><label class="small muted">Anzahl weitere Termine</label><input id="fw" class="input" type="number" min="0" max="60" value="0"><p id="frhint" class="small muted" style="margin:4px 0 0"></p></div>`}
     </div><div class="row" style="margin-top:12px"><button class="btn primary" data-act="evsave" data-id="${e?e.id:""}">Speichern</button><button class="btn ghost" data-act="close">Abbrechen</button></div>`)}
 
 function postInfo(p){const a=P(p.person_id);return`<div class="card" style="border-left:4px solid var(--brand)"><div class="row between"><b class="small">📢 ${esc(full(a)||"Vorstand")}</b><span class="small muted">${p.pinned?"📌 ":""}${fDateY(p.created_at)}</span></div><p style="margin:6px 0 0;white-space:pre-wrap">${linkify(p.text)}</p>
@@ -1478,7 +1492,7 @@ const A={
   rsvpno:d=>{const g=$("#grund").value;closeModal();call("chor_set_attendance",{p_event:d.id,p_status:"nein",p_grund:g},"Abgemeldet").catch(()=>{})},
   evnew:()=>evForm(null),evedit:d=>evForm(S.events.find(e=>e.id===d.id)),
   evsave:d=>{const v=id=>$(id).value,dt=x=>x?new Date(x).toISOString():null;if(!v("#fti").trim())return toast("Bitte einen Titel angeben");if(!v("#fs"))return toast("Bitte den Beginn angeben");
-    const dp=!d.id&&$("#dopush")?.checked,ttl=v("#fti"),st=v("#fs"),wk=d.id?0:+($("#fw")?.value||0);closeModal();call("chor_save_event",{p_id:d.id||null,p_typ:v("#ft"),p_titel:v("#fti"),p_start:dt(v("#fs")),p_ende:dt(v("#fe")),p_ort:v("#fo"),p_info:v("#fi"),p_anmeldeschluss:dt(v("#fa")),p_zaehlt:$("#fz").checked,p_wochen:wk,p_eintreffen:v("#fin")?dt(v("#fs").slice(0,11)+v("#fin")):null},"Termin gespeichert").then(()=>{if(dp)autoPush(wk?"📅 Neue Termine":"📅 Neuer Termin",`${ttl} – ${fDate(st)}, ${fTime(st)} Uhr${wk?` (und ${wk} weitere Wochen)`:""}`,"./#/termine")}).catch(()=>{})},
+    const dp=!d.id&&$("#dopush")?.checked,ttl=v("#fti"),st=v("#fs"),rh=d.id?"":$("#frh")?.value||"",wk=rh?Math.min(60,Math.max(0,+($("#fw")?.value||0))):0;closeModal();call("chor_save_event",{p_id:d.id||null,p_typ:v("#ft"),p_titel:v("#fti"),p_start:dt(v("#fs")),p_ende:dt(v("#fe")),p_ort:v("#fo"),p_info:v("#fi"),p_anmeldeschluss:dt(v("#fa")),p_zaehlt:$("#fz").checked,p_wochen:wk,p_rhythmus:rh==="monat"?"monat":"woche",p_eintreffen:v("#fin")?dt(v("#fs").slice(0,11)+v("#fin")):null},"Termin gespeichert").then(()=>{if(dp)autoPush(wk?"📅 Neue Termine":"📅 Neuer Termin",`${ttl} – ${fDate(st)}, ${fTime(st)} Uhr${wk?` (${serLabel(st,rh)}, ${wk+1} Termine)`:""}`,"./#/termine")}).catch(()=>{})},
   evaction:d=>{const t={absagen:"Termin absagen?",reaktivieren:"Termin wieder aktivieren?",loeschen:"Termin endgültig löschen (inkl. Rückmeldungen)?",serie_loeschen:"Alle künftigen Termine dieser Serie löschen?"}[d.a];if(!confirm(t))return;
     const ev=S.events.find(e=>e.id===d.id);call("chor_event_action",{p_id:d.id,p_action:d.a},"Erledigt").then(()=>{if(d.a==="absagen"&&ev&&D(ev.start)>new Date()&&confirm("Absage als Push-Nachricht an alle senden?"))autoPush("❌ Abgesagt: "+ev.titel,`${fDate(ev.start)}, ${fTime(ev.start)} Uhr fällt aus.`,"./#/termin/"+ev.id);if(/loeschen/.test(d.a))go("termine")}).catch(()=>{})},
   prlist:d=>prListForm(d.id),prmatch:()=>prListCheck(),prlback:()=>prListForm(PRL.id),prlsave:()=>prListSave(),prxsave:()=>prxSave(),kxsave:()=>kxSave(),
