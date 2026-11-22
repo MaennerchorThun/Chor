@@ -327,7 +327,7 @@ const LOGO0="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvM
 /* ================= Chor-Plattform (White-Label der Chor-App) =================
    Ein Chor = ein Mandant. Branding (Name, Logo, Farbe) kommt aus der Datenbank (cp.tenants).
    Daten im abgeschotteten Bereich «cp» (Zeilenschutz pro Mandant), Zugriff nur über cp_-Funktionen mit dem persönlichen Code. */
-const APP_VERSION="1.0"; /* bei jeder Änderung erhöhen */
+const APP_VERSION="1.2"; /* bei jeder Änderung erhöhen */
 const SUPA={url:"https://tvygwnawrkxdhzghxgfv.supabase.co",key:"sb_publishable_yO40Pv19n6Wq0Wh769VZCg_q9BRTBvd"};
 const FILES_FN=SUPA.url+"/functions/v1/cp-files";
 const PUSH_FN=SUPA.url+"/functions/v1/cp-push",VAPID_PUBLIC="BNWkxTW3k3B7aTQY4r7nJ5VxkPL57BxlhuReulrRmmi8KPKTEZeYG52AFhSLN5o5Gs-Lhr5fqoMqBqqpBMyywEo";
@@ -424,7 +424,7 @@ function evCard(e){const t=TYP[e.typ]||TYP.anlass;
   return`<div class="card ev ${e.abgesagt?"cancel":""}" style="margin-bottom:10px"><button class="evhead" data-act="go" data-r="termin/${e.id}">
     <div class="evdate"><b>${D(e.start).getDate()}</b><span>${D(e.start).toLocaleDateString("de-CH",{month:"short"})}</span></div>
     <div class="grow"><div class="small muted">${t.ic} ${t.l} · ${D(e.start).toLocaleDateString("de-CH",{weekday:"long"})} ${fTime(e.start)}${e.ende?"–"+fTime(e.ende):""}</div><div class="ttl">${esc(e.titel)}</div>${e.ort?`<div class="small muted">📍 ${esc(e.ort)}</div>`:""}${e.abgesagt?"":`<div class="small muted">🕒 Eintreffen ${fTime(arrive(e))}</div>`}
-    <div class="small" style="margin-top:4px"><span style="color:var(--ok)">✓ ${e.ja}</span> · <span style="color:var(--danger)">✗ ${e.nein}</span> · <span class="muted">? ${e.vielleicht}</span>${e.anmeldeschluss?` · <span class="muted">Anmeldeschluss ${fDateY(e.anmeldeschluss)}</span>`:""}</div></div></button>
+    <div class="small" style="margin-top:4px">${D(e.start)<new Date()&&e.erfasst>0?`<span style="color:var(--ok)">👥 ${e.anwesend} anwesend</span> <span class="muted">· Präsenz erfasst</span>`:`<span style="color:var(--ok)">✓ ${e.ja}</span> · <span style="color:var(--danger)">✗ ${e.nein}</span> · <span class="muted">? ${e.vielleicht}</span>`}${e.anmeldeschluss?` · <span class="muted">Anmeldeschluss ${fDateY(e.anmeldeschluss)}</span>`:""}</div></div></button>
     <div style="margin-top:10px">${rsvpBtns(e)}</div></div>`}
 
 /* ---------- Ansichten ---------- */
@@ -478,14 +478,73 @@ function vTermin(id){
   return h}
 async function loadEvPeople(e){const el=$("#evpeople");if(!el)return;
   try{evPeople=await rpc("chor_event_people",{p_code:S.code,p_event:e.id})}catch(err){el.innerHTML=`<p class="muted small">${esc(err.message)}</p>`;return}
-  const past=D(e.start)<new Date(),grp=[["ja","Dabei"],["vielleicht","Vielleicht"],["nein","Nicht dabei"],[null,"Keine Rückmeldung"]];
+  const past=D(e.start)<new Date(),erf=past&&evPeople.some(p=>p.praesent!=null),pres=p=>!!(p.praesent??p.status==="ja");
+  /* vergangen mit erfasster Präsenz: nach Anwesenheit gruppieren, sonst nach Rückmeldung */
+  const grp=erf?[["an","Anwesend",p=>pres(p)],["ab","Nicht anwesend",p=>!pres(p)]]:[["ja","Dabei"],["vielleicht","Vielleicht"],["nein","Nicht dabei"],[null,"Keine Rückmeldung"]].map(([st,l])=>[st,l,p=>p.status===st]);
   const byStimme=st=>STIMMEN.map(s=>`${s}: ${evPeople.filter(p=>p.status===st&&p.stimme===s).length}`).join(" · ");
-  let h=`<div class="sec-h"><h2>Wer kommt?</h2><span class="small muted">${evPeople.filter(p=>p.status==="ja").length} von ${evPeople.length}</span></div>`;
-  if(isV()&&past)h+=`<div class="card soft small"><b>Präsenz erfassen:</b> Häkchen = war anwesend. Ohne Erfassung zählt die Zusage.<div class="row" style="margin-top:8px"><button class="btn sm primary" data-act="presave" data-id="${e.id}">Präsenz speichern</button><button class="btn sm" data-act="preall" data-v="1">alle Zusagen anwesend</button></div></div>`;
-  for(const[st,l]of grp){const ps=evPeople.filter(p=>p.status===st);if(!ps.length)continue;
-    h+=`<div class="card"><div class="row between"><h3 style="margin:0">${l} (${ps.length})</h3></div>${st==="ja"?`<p class="small muted" style="margin:4px 0 0">${byStimme("ja")}</p>`:""}<div class="list">${ps.map(p=>`<div class="li" style="cursor:default"><div class="av">${ini(p)}</div><div class="grow"><div class="nm">${esc(full(p))}</div><div class="sub">${esc(p.stimme||"")}${p.grund?` · ${esc(p.grund)}`:""}</div></div>
+  let h=erf?`<div class="sec-h"><h2>Wer war da?</h2><span class="small muted">${evPeople.filter(pres).length} von ${evPeople.length} anwesend</span></div>`:`<div class="sec-h"><h2>${past?"Rückmeldungen":"Wer kommt?"}</h2><span class="small muted">${evPeople.filter(p=>p.status==="ja").length} von ${evPeople.length}</span></div>`;
+  if(isV()&&past)h+=`<div class="card soft small"><b>Präsenz erfassen:</b> Häkchen = war anwesend. Ohne Erfassung zählt die Zusage.<div class="row" style="margin-top:8px"><button class="btn sm primary" data-act="presave" data-id="${e.id}">Präsenz speichern</button><button class="btn sm" data-act="preall" data-v="1">alle Zusagen anwesend</button><button class="btn sm" data-act="prlist" data-id="${e.id}">📷 Liste einfügen</button></div></div>`;
+  for(const[st,l,f]of grp){const ps=evPeople.filter(f);if(!ps.length)continue;
+    h+=`<div class="card"><div class="row between"><h3 style="margin:0">${l} (${ps.length})</h3></div>${st==="ja"?`<p class="small muted" style="margin:4px 0 0">${byStimme("ja")}</p>`:st==="an"?`<p class="small muted" style="margin:4px 0 0">${STIMMEN.map(s=>`${s}: ${ps.filter(p=>p.stimme===s).length}`).join(" · ")}</p>`:""}<div class="list">${ps.map(p=>`<div class="li" style="cursor:default"><div class="av">${ini(p)}</div><div class="grow"><div class="nm">${esc(full(p))}</div><div class="sub">${esc(p.stimme||"")}${p.grund?` · ${esc(p.grund)}`:""}</div></div>
       ${isV()&&past?`<label class="row small"><input type="checkbox" class="prchk" data-id="${p.id}" ${(p.praesent??p.status==="ja")?"checked":""}> anwesend</label>`:isV()&&!past?`<select class="input" style="width:auto;padding:4px" data-chg="setfor" data-id="${p.id}" data-ev="${e.id}"><option value="">–</option><option value="ja" ${p.status==="ja"?"selected":""}>dabei</option><option value="nein" ${p.status==="nein"?"selected":""}>nicht dabei</option><option value="vielleicht" ${p.status==="vielleicht"?"selected":""}>vielleicht</option></select>`:""}</div>`).join("")}</div></div>`}
   el.innerHTML=h}
+/* ---------- Präsenz aus Liste (Text aus Foto, z.B. iPhone Live Text) ---------- */
+const prN=x=>String(x||"").toLowerCase().replace(/ß/g,"ss").replace(/ä/g,"a").replace(/ö/g,"o").replace(/ü/g,"u").normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/ae/g,"a").replace(/oe/g,"o").replace(/ue/g,"u");
+const prT=x=>prN(x).split(/[^a-z]+/).filter(Boolean);
+function prLev(a,b){if(a===b)return 0;const m=a.length,n=b.length;if(!m||!n)return m||n;let r=[...Array(n+1).keys()];
+  for(let i=1;i<=m;i++){let pv=r[0];r[0]=i;for(let j=1;j<=n;j++){const t=r[j];r[j]=Math.min(r[j]+1,r[j-1]+1,pv+(a[i-1]===b[j-1]?0:1));pv=t}}return r[n]}
+const prSim=(a,b)=>!a||!b?0:1-prLev(a,b)/Math.max(a.length,b.length);
+/* bestes Vorkommen einer Person in den Token einer Zeile: Nachname (auch mehrteilig) + Vorname/Initiale direkt davor oder danach */
+function prScore(tk,p){const ln=prT(p.name),fn=prT(p.vorname);if(!ln.length)return null;const L=ln.join(""),key=ln.reduce((a,b)=>b.length>a.length?b:a);let best=null;
+  for(let i=0;i<tk.length;i++)for(const k of[ln.length,1]){if(i+k>tk.length)continue;const w=tk.slice(i,i+k).join("");const sN=Math.max(prSim(w,L),k===1?prSim(w,key)*.97:0);if(sN<.7)continue;
+    let sV=0,vi=[];const near=[i-2,i-1,i+k,i+k+1].filter(j=>j>=0&&j<tk.length);
+    for(const j of near){const t=tk[j];let v=0;
+      if(t.length<=2&&fn.length){const inits=fn.map(f=>f[0]).join("");v=t===inits||t===inits[0]?.85:0}
+      else v=Math.max(prSim(t,fn.join("")),...fn.map(f=>prSim(t,f)));
+      if(v>sV){sV=v;vi=[j]}}
+    if(sV<.6){sV=0;vi=[]}
+    const sc=sV?.6*sN+.4*sV:.8*sN;if(!best||sc>best.sc)best={sc,sN,sV,used:[...Array(k).keys()].map(x=>x+i).concat(vi)}}
+  return best}
+function prMatch(text,people){const out=[];
+  for(const raw of String(text||"").split(/[\n;\t]+/)){let tk=prT(raw).filter(t=>t.length>1||/^[a-z]$/.test(t));const line=raw.trim();if(!tk.length)continue;let hit=0;
+    for(let guard=0;guard<8&&tk.length;guard++){let b=null;
+      for(const p of people){const r=prScore(tk,p);if(r&&r.sc>=.62&&(!b||r.sc>b.r.sc))b={p,r}}
+      if(!b)break;
+      /* Verwechslungsgefahr: andere Person mit ähnlichem Nachnamen, Vorname nicht erkannt */
+      const twin=people.some(q=>q.id!==b.p.id&&prSim(prT(q.name).join(""),prT(b.p.name).join(""))>=.78);
+      const conf=b.r.sV?(b.r.sc>=.85?"ok":"pruefen"):(twin?"pruefen":b.r.sc>=.76?"ok":"pruefen");
+      const words=b.r.used.map(i=>tk[i]);out.push({txt:line,words:words.join(" "),id:b.p.id,conf});hit++;
+      tk=tk.filter((_,i)=>!b.r.used.includes(i))}
+    const rest=tk.filter(t=>t.length>2);if(!hit||rest.length>=1&&rest.join("").length>=4)out.push({txt:line,words:hit?rest.join(" "):"",id:null,conf:"fehlt"})}
+  /* doppelt erkannt → nur der erste zählt */
+  const seen=new Set();for(const x of out){if(!x.id)continue;if(seen.has(x.id)){x.conf="doppelt"}seen.add(x.id)}
+  return out}
+let PRL=null;
+function prListForm(id){const e=S.events.find(x=>x.id===id);if(!e||!evPeople)return;PRL={id,rows:null,text:PRL&&PRL.id===id?PRL.text:""};
+  modal(`<h2>📷 Präsenzliste einfügen</h2><p class="small muted" style="margin:0 0 8px">${esc(e.titel)}, ${fDateY(e.start)}</p>
+    <div class="card soft small" style="margin-bottom:10px"><b>So geht's auf dem iPhone:</b><ol style="margin:6px 0 0;padding-left:18px">
+      <li>Foto der Liste in «Fotos» öffnen, unten rechts auf das Text-Symbol tippen, dann «Alle kopieren» (oder Namen markieren → Kopieren).</li>
+      <li>Hier ins Feld tippen → «Einsetzen».</li></ol>
+      <p style="margin:6px 0 0">Alternativ: ins Feld tippen, gedrückt halten → «Text scannen» und die Kamera auf die Liste halten.</p>
+      <p class="muted" style="margin:6px 0 0">Die Liste sollte nur die Anwesenden enthalten (ein Name pro Zeile ist ideal). Häkchen auf einer Gesamtliste erkennt das iPhone nicht. Der Text wird nicht gespeichert, nur die Präsenz.</p></div>
+    <textarea id="prtxt" class="input" rows="8" placeholder="z.B.&#10;Muster Hans&#10;H. Beispiel&#10;Probe, Peter">${esc(PRL.text)}</textarea>
+    <div class="row" style="margin-top:12px"><button class="btn primary" data-act="prmatch">Namen abgleichen</button><button class="btn ghost" data-act="close">Abbrechen</button></div>`)}
+function prListCheck(){const txt=$("#prtxt")?.value||"";PRL.text=txt;const rows=prMatch(txt,evPeople);PRL.rows=rows;const e=S.events.find(x=>x.id===PRL.id);
+  if(!rows.length)return toast("Keine Namen gefunden");
+  const ppl=[...evPeople].sort((a,b)=>(a.name||"").localeCompare(b.name||"","de")||(a.vorname||"").localeCompare(b.vorname||"","de"));
+  const sel=(x,i)=>`<select class="input prsel" data-i="${i}" style="padding:4px"><option value="">– nicht zuordnen –</option>${ppl.map(p=>`<option value="${p.id}" ${x.id===p.id&&x.conf!=="doppelt"?"selected":""}>${esc(p.name)} ${esc(p.vorname)}${p.stimme?" ("+esc(p.stimme)+")":""}</option>`).join("")}</select>`;
+  const badge={ok:"",pruefen:`<span style="color:#b26b00">⚠ bitte prüfen</span>`,fehlt:`<span style="color:var(--brand)">✗ nicht erkannt</span>`,doppelt:`<span class="muted">doppelt</span>`};
+  const n=k=>rows.filter(x=>x.conf===k).length,ok=new Set(rows.filter(x=>x.id&&x.conf!=="doppelt").map(x=>x.id)).size;
+  modal(`<h2>Abgleich prüfen</h2><p class="small muted" style="margin:0 0 8px">${esc(e.titel)}, ${fDateY(e.start)} · <b>${ok}</b> Sänger zugeordnet${n("pruefen")?` · ${n("pruefen")} unsicher`:""}${n("fehlt")?` · ${n("fehlt")} Zeilen nicht erkannt`:""}</p>
+    <div style="display:grid;gap:8px">${rows.map((x,i)=>`<div style="border-top:1px solid var(--line);padding-top:6px"><div class="small"><span class="muted">Liste:</span> «${esc(x.txt)}»${x.id&&rows.filter(y=>y.txt===x.txt&&y.id).length>1?` <span class="muted">(Teil «${esc(x.words)}»)</span>`:""} ${badge[x.conf]}</div>${sel(x,i)}</div>`).join("")}</div>
+    <label class="row small" style="margin-top:12px;flex-wrap:nowrap;gap:6px"><input type="checkbox" id="prabs" checked style="flex:none"> nicht aufgeführte Sänger als abwesend erfassen</label>
+    <p class="small muted" style="margin:4px 0 0">Sonst bleibt bei ihnen die bisherige Erfassung bzw. Zusage.</p>
+    <div class="row" style="margin-top:12px;flex-wrap:wrap"><button class="btn primary" data-act="prlsave">Präsenz speichern</button><button class="btn" data-act="prlback">← Text ändern</button><button class="btn ghost" data-act="close">Abbrechen</button></div>`)}
+async function prListSave(){const ids=new Set([...document.querySelectorAll(".prsel")].map(s=>s.value).filter(Boolean));if(!ids.size)return toast("Niemand zugeordnet");
+  const abs=$("#prabs")?.checked,cur=id=>{const c=document.querySelector(`.prchk[data-id="${id}"]`);if(c)return c.checked;const p=evPeople.find(x=>x.id===id);return!!(p&&(p.praesent??p.status==="ja"))};
+  const rows=evPeople.map(p=>({id:p.id,praesent:ids.has(p.id)?true:abs?false:cur(p.id)}));
+  try{await rpc("chor_set_presence",{p_code:S.code,p_event:PRL.id,p_rows:rows})}catch(e){return toast(e.message)}
+  closeModal();toast(`Präsenz gespeichert: ${ids.size} anwesend`);statData=null;PRL=null;try{await load()}catch(_){}render()}
 function evForm(e){const d=e||{};const st=d.start?isoLocal(d.start):isoLocal(new Date(new Date().setHours(isVet()?18:19,isVet()?0:30,0,0)+864e5));
   modal(`<h2>${e?"Termin bearbeiten":"Neuer Termin"}</h2><div style="display:grid;gap:8px">
     <select id="ft" class="input">${Object.entries(TYP).map(([k,v])=>`<option value="${k}" ${d.typ===k?"selected":""}>${v.ic} ${v.l}</option>`).join("")}</select>
@@ -1305,6 +1364,7 @@ const A={
     const dp=!d.id&&$("#dopush")?.checked,ttl=v("#fti"),st=v("#fs"),wk=d.id?0:+($("#fw")?.value||0);closeModal();call("chor_save_event",{p_id:d.id||null,p_typ:v("#ft"),p_titel:v("#fti"),p_start:dt(v("#fs")),p_ende:dt(v("#fe")),p_ort:v("#fo"),p_info:v("#fi"),p_anmeldeschluss:dt(v("#fa")),p_zaehlt:$("#fz").checked,p_wochen:wk,p_eintreffen:v("#fin")?dt(v("#fs").slice(0,11)+v("#fin")):null},"Termin gespeichert").then(()=>{if(dp)autoPush(wk?"📅 Neue Termine":"📅 Neuer Termin",`${ttl} – ${fDate(st)}, ${fTime(st)} Uhr${wk?` (und ${wk} weitere Wochen)`:""}`,"./#/termine")}).catch(()=>{})},
   evaction:d=>{const t={absagen:"Termin absagen?",reaktivieren:"Termin wieder aktivieren?",loeschen:"Termin endgültig löschen (inkl. Rückmeldungen)?",serie_loeschen:"Alle künftigen Termine dieser Serie löschen?"}[d.a];if(!confirm(t))return;
     const ev=S.events.find(e=>e.id===d.id);call("chor_event_action",{p_id:d.id,p_action:d.a},"Erledigt").then(()=>{if(d.a==="absagen"&&ev&&D(ev.start)>new Date()&&confirm("Absage als Push-Nachricht an alle senden?"))autoPush("❌ Abgesagt: "+ev.titel,`${fDate(ev.start)}, ${fTime(ev.start)} Uhr fällt aus.`,"./#/termin/"+ev.id);if(/loeschen/.test(d.a))go("termine")}).catch(()=>{})},
+  prlist:d=>prListForm(d.id),prmatch:()=>prListCheck(),prlback:()=>prListForm(PRL.id),prlsave:()=>prListSave(),
   preall:()=>{document.querySelectorAll(".prchk").forEach(c=>{const p=evPeople.find(x=>x.id===c.dataset.id);c.checked=p&&p.status==="ja"})},
   presave:d=>{const rows=[...document.querySelectorAll(".prchk")].map(c=>({id:c.dataset.id,praesent:c.checked}));call("chor_set_presence",{p_event:d.id,p_rows:rows},"Präsenz gespeichert").catch(()=>{})},
   send:()=>{const t=$("#msg").value.trim();if(!t)return;const info=$("#asinfo")?.checked;call("chor_post",{p_kind:info?"info":"chat",p_text:t},info?"Ankündigung veröffentlicht":null).then(()=>{if(info)autoPush("📢 Ankündigung",t.slice(0,200),"./#/chat")}).catch(()=>{})},
