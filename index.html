@@ -316,7 +316,7 @@ const LOGO="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANAAAABpCAYAAABLYa3JAA
 /* ================= MCT Chor-App =================
    Für die aktiven Sänger des Männerchors Thun. Daten in Supabase (gleiche Datenbank wie die Herrenabend-App),
    Zugriff nur über geprüfte Funktionen mit dem persönlichen Code. Dateien im privaten Speicher «chor». */
-const APP_VERSION="3.23"; /* bei jeder Änderung erhöhen */
+const APP_VERSION="3.24"; /* bei jeder Änderung erhöhen */
 const SUPA={url:"https://tvygwnawrkxdhzghxgfv.supabase.co",key:"sb_publishable_yO40Pv19n6Wq0Wh769VZCg_q9BRTBvd"};
 const FILES_FN=SUPA.url+"/functions/v1/chor-files";
 const PUSH_FN=SUPA.url+"/functions/v1/chor-push",VAPID_PUBLIC="BNWkxTW3k3B7aTQY4r7nJ5VxkPL57BxlhuReulrRmmi8KPKTEZeYG52AFhSLN5o5Gs-Lhr5fqoMqBqqpBMyywEo";
@@ -770,7 +770,7 @@ function vDieseApp(){return`<button class="btn ghost sm" data-act="go" data-r="m
   <div class="card soft small"><b>Gut zu wissen:</b> läuft auf jedem Handy und Computer, ohne App-Store · Daten auf Servern in der Schweiz (Zürich) · Zugang nur mit persönlichem Code · keine Lizenzkosten für die Grundtechnik</div>
   <div class="card" style="border-color:var(--brand);text-align:center"><p style="margin:0 0 10px">Fragen, Demo oder Offerte? Wir zeigen euch die App gerne.</p><a class="btn primary" href="mailto:praesident@mcthun.com?subject=Interesse%20an%20der%20Vereins-App%20des%20M%C3%A4nnerchors%20Thun">✉️ Kontakt aufnehmen</a><p class="small muted" style="margin:10px 0 0">Männerchor Thun 1829 · praesident@mcthun.com</p></div>`}
 function vMehr(){const t=(r,ic,l,d)=>`<button class="tile" data-act="go" data-r="${r}"><span class="ic">${ic}</span><b>${l}</b><span>${d}</span></button>`;
-  return`<h1>Mehr</h1><div class="tiles">${t("push","🔔","Mitteilungen","Push aufs Handy")}${t("dieseapp","📱","Diese App","für andere Vereine")}${t("stamm/"+S.me.id,"🪪","Mein Stammblatt","Daten & History")}${t("mitglieder","👥","Sänger","nach Stimmen")}${t("geburtstage","🎂","Geburtstage","mit Gratulation")}${t("statistik","📊","Präsenz","Statistik")}${t("kalender","📅","Kalender-Abo","Outlook, iPhone, Google")}${t("umfragen","🗳️","Umfragen",(S.polls||[]).filter(p=>pollOpen(p)&&!(p.mine&&p.mine.length)).length?"offen: "+(S.polls||[]).filter(p=>pollOpen(p)&&!(p.mine&&p.mine.length)).length:"abstimmen")}${t("abwesenheit","🤒","Krank & abwesend","melden")}<button class="tile" data-act="toha"><span class="ic">🎩</span><b>Herrenabend-App</b><span>195. Herrenabend</span></button>${(isVet()?t("vorstand","🏛️","Obmannschaft","Funktionen & History"):t("vorstand","🏛️","Vorstand & Chargen","Funktionen & History"))}${isV()&&!isVet()?t("ehrungen","🏅","Ehrungen","Veteranen-Ernennungen"):""}${(S.gremien||[]).length?t("gremien","🗂️","Gremien",S.gremien.map(x=>x.g==="muko"?"MUKO":x.name.split(" ")[0]).join(" · ")):""}${isV()?t("mail","✉️","E-Mail","an alle oder einzelne"):""}${isV()?t("verwaltung","⚙️","Verwaltung","Mitglieder & Import"):""}</div>
+  return`<h1>Mehr</h1><div class="tiles">${t("push","🔔","Mitteilungen","Push aufs Handy")}${t("dieseapp","📱","Diese App","für andere Vereine")}${t("stamm/"+S.me.id,"🪪","Mein Stammblatt","Daten & History")}${t("mitglieder","👥","Sänger","nach Stimmen")}${t("geburtstage","🎂","Geburtstage","mit Gratulation")}${t("statistik","📊","Präsenz","Statistik")}${t("kalender","📅","Kalender-Abo","Outlook, iPhone, Google")}${t("umfragen","🗳️","Umfragen",(S.polls||[]).filter(p=>pollOpen(p)&&!(p.mine&&p.mine.length)).length?"offen: "+(S.polls||[]).filter(p=>pollOpen(p)&&!(p.mine&&p.mine.length)).length:"abstimmen")}${t("abwesenheit","🤒","Krank & abwesend","melden")}<button class="tile" data-act="toha"><span class="ic">🎩</span><b>Herrenabend-App</b><span>195. Herrenabend</span></button>${(isVet()?t("vorstand","🏛️","Obmannschaft","Funktionen & History"):t("vorstand","🏛️","Vorstand & Chargen","Funktionen & History"))}${isV()&&!isVet()?t("ehrungen","🏅","Ehrungen","Veteranen-Ernennungen"):""}${grVis().length?t("gremien","🗂️","Gremien",grVis().map(x=>x.g==="muko"?"MUKO":x.name.split(" ")[0]).join(" · ")):""}${isV()?t("mail","✉️","E-Mail","an alle oder einzelne"):""}${isV()?t("verwaltung","⚙️","Verwaltung","Mitglieder & Import"):""}</div>
   <div class="card soft small" style="margin-top:14px">Angemeldet als <b>${esc(full(S.me))}</b>${isV()?" ("+(S.me.ok?"Supervisor – beide Chöre":VS())+")":""} · ${chorName()}${S.chors&&S.chors.mc&&S.chors.vet?` · <a href="#" data-act="chorsw">${isVet()?"zum Männerchor":"zu den Veteranen"} wechseln</a>`:""}. <a href="#" data-act="logout">Abmelden</a><br><span class="muted">Chor-App Version ${APP_VERSION}</span></div>`}
 function vMitglieder(){const act=S.members.filter(m=>m.aktiv);
   let h=`<button class="btn ghost sm" data-act="go" data-r="mehr" style="margin-bottom:10px">← Mehr</button><div class="row between"><h1 style="margin:0">Sänger</h1>${PBTN}</div><p class="muted">${act.length} aktive Sänger${isVet()?" bei den Veteranen":""}</p>`;
@@ -1351,6 +1351,8 @@ const GR_ST={geplant:"geplant",eingeladen:"eingeladen",durchgefuehrt:"durchgefü
 const BS_ST={offen:"offen",erledigt:"erledigt",info:"zur Kenntnis"};
 S.gd=S.gd||{};
 async function grLoad(g,force){if(S.gd[g]&&!force)return S.gd[g];S.gd[g]=await rpc("gremium_data",{p_code:S.code,p_g:g});return S.gd[g]}
+/* Männerchor: Vorstand und MUKO · Veteranen: Obmannschaft */
+const grVis=()=>(S.gremien||[]).filter(x=>isVet()?x.g==="obmannschaft":x.g!=="obmannschaft");
 async function grList(){try{S.gremien=await rpc("gremium_list",{p_code:S.code})}catch(e){S.gremien=[]}}
 const grTitle=(g,x)=>x.titel||`${GR_LBL[g]}${x.nr?" "+x.nr:""}`;
 const grDate=x=>D(x).toLocaleDateString("de-CH",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
@@ -1365,12 +1367,12 @@ function grEditorRows(){return S.trEdit.map((t,i)=>`<div class="card" style="pad
 function grTrRead(){document.querySelectorAll("[data-tr]").forEach(el=>{const t=S.trEdit[+el.dataset.i];if(!t)return;const k=el.dataset.tr;if(k==="u")t.u=el.value.split("\n").map(x=>x.trim()).filter(Boolean);else t[k]=el.value.trim()});return S.trEdit.filter(t=>t.t)}
 
 function vGremien(){if(!S.gremien){grList().then(render);return`<p class="muted">wird geladen …</p>`}
-  if(!S.gremien.length)return`<button class="btn ghost sm" data-act="go" data-r="mehr" style="margin-bottom:10px">← Mehr</button><h1>Gremien</h1><p class="muted">Dieser Bereich ist für Mitglieder von Vorstand, MUKO und Obmannschaft.</p>`;
+  if(!grVis().length)return`<button class="btn ghost sm" data-act="go" data-r="mehr" style="margin-bottom:10px">← Mehr</button><h1>Gremien</h1><p class="muted">Dieser Bereich ist für ${isVet()?"die Obmannschaft":"Vorstand und MUKO"}.</p>`;
   return`<button class="btn ghost sm" data-act="go" data-r="mehr" style="margin-bottom:10px">← Mehr</button><h1>Gremien</h1><p class="muted small">Sitzungen, Traktanden, Beschlüsse und Dokumente. Sichtbar nur für die Mitglieder des jeweiligen Gremiums (gemäss «Vorstand & Chargen»).</p>
-  ${S.gremien.map(x=>`<button class="card" data-act="go" data-r="gremium/${x.g}" style="display:block;width:100%;text-align:left;cursor:pointer"><div class="row between"><b>${esc(x.name)}</b><span class="muted">›</span></div>
+  ${grVis().map(x=>`<button class="card" data-act="go" data-r="gremium/${x.g}" style="display:block;width:100%;text-align:left;cursor:pointer"><div class="row between"><b>${esc(x.name)}</b><span class="muted">›</span></div>
     <div class="small muted">${x.next?`Nächste Sitzung: ${grDate(x.next)}, ${fTime(x.next)} Uhr`:"keine Sitzung geplant"}${x.offen?` · ${x.offen} offene Beschlüsse`:""}</div></button>`).join("")}`}
 
-function vGremium(g){const d=S.gd[g];if(!d){grLoad(g).then(render).catch(e=>{toast(e.message);go("gremien")});return`<p class="muted">wird geladen …</p>`}
+function vGremium(g){if(S.gremien&&!grVis().some(x=>x.g===g)){setTimeout(()=>go("gremien"),0);return""}const d=S.gd[g];if(!d){grLoad(g).then(render).catch(e=>{toast(e.message);go("gremien")});return`<p class="muted">wird geladen …</p>`}
   const tab=S.grTab||"sitzungen",st=d.settings||{},now=new Date();
   const tb=(k,l)=>`<button class="chip ${tab===k?"on":""}" data-act="grtab" data-k="${k}">${l}</button>`;
   let h=`<button class="btn ghost sm" data-act="go" data-r="gremien" style="margin-bottom:10px">← Gremien</button><h1 style="margin:0 0 6px">${esc(st.name||g)}</h1>
